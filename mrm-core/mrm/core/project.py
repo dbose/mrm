@@ -284,7 +284,57 @@ class Project:
     def _build_catalog(self):
         """Build model catalog from configs"""
         models = self.list_models()
+        # Build base catalog from project model configs
         self._catalog = ModelCatalog.from_project(models)
+
+        # Merge external catalogs configured in project config (optional)
+        try:
+            catalogs_cfg = self.config.get('catalogs', {})
+            for name, cfg in catalogs_cfg.items():
+                ctype = cfg.get('type')
+                if ctype == 'databricks_unity' or ctype == 'databricks_uc':
+                    try:
+                        from mrm.core.catalog_backends.databricks_unity import DatabricksUnityCatalog
+
+                        host = cfg.get('host')
+                        token = cfg.get('token')
+                        catalog_default = cfg.get('catalog')
+                        schema_default = cfg.get('schema')
+                        mlflow_registry = cfg.get('mlflow_registry', True)
+                        cache_ttl = cfg.get('cache_ttl_seconds', 300)
+
+                        backend = DatabricksUnityCatalog(
+                            host=host,
+                            token=token,
+                            catalog=catalog_default,
+                            schema=schema_default,
+                            mlflow_registry=mlflow_registry,
+                            cache_ttl_seconds=cache_ttl
+                        )
+
+                        # Register discovered models into central ModelCatalog
+                        try:
+                            remote_models = backend.list_models(catalog_default, schema_default)
+                            for mname, meta in remote_models.items():
+                                # Build a ModelRef-like dict entry
+                                model_ref = {
+                                    'type': 'databricks_uc',
+                                    'catalog': catalog_default,
+                                    'schema': schema_default,
+                                    'model': mname,
+                                    **(meta or {})
+                                }
+                                self._catalog.register(mname, ModelRef.from_config(model_ref))
+                        except Exception as e:
+                            logger.warning(f"Could not list models from catalog '{name}': {e}")
+
+                    except Exception as e:
+                        logger.warning(f"Could not initialize catalog backend '{name}': {e}")
+                else:
+                    logger.debug(f"Skipping unknown catalog type: {ctype}")
+        except Exception:
+            # Ignore catalog loading errors but log
+            logger.debug("No external catalogs configured or failed to load them")
         logger.info(f"Built catalog with {len(self._catalog.models)} models")
     
     def select_models_graph(

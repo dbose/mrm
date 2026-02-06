@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1770356731840
+current_stage: None
+description: null
+last_updated_timestamp: 1770356731840
+name: credit_scorecard
+run_id: null
+run_link: null
+source: file:///Users/dbose/projects/mrm/mrm-core/credit_risk_example/mlruns/0/e3a472f841e1428da34f55248ba94116/artifacts
+status: READY
+status_message: null
+storage_location: file:///Users/dbose/projects/mrm/mrm-core/credit_risk_example/mlruns/0/e3a472f841e1428da34f55248ba94116/artifacts
+user_id: null
+version: 1

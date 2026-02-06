@@ -44,6 +44,17 @@ backends:
     type: filesystem
     path: ~/.mrm/data
 
+# External model catalogs
+catalogs:
+  databricks:
+    type: databricks_unity
+    host: "{{ env_var('DATABRICKS_HOST') }}"
+    token: "{{ env_var('DATABRICKS_TOKEN') }}"
+    catalog: workspace
+    schema: default
+    mlflow_registry: true
+    cache_ttl_seconds: 300
+
 # Documentation templates
 docs:
   templates:

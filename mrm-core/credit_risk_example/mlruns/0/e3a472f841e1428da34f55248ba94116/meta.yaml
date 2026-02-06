@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/dbose/projects/mrm/mrm-core/credit_risk_example/mlruns/0/e3a472f841e1428da34f55248ba94116/artifacts
+end_time: 1770356731830
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: e3a472f841e1428da34f55248ba94116
+run_name: thoughtful-whale-427
+run_uuid: e3a472f841e1428da34f55248ba94116
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1770356731819
+status: 3
+tags: []
+user_id: dbose

@@ -205,6 +205,178 @@ def debug(
 
 
 @app.command()
+def publish(
+    model: str = typer.Argument(..., help="Model name to publish"),
+    to_catalog: str = typer.Option(None, "--to", help="Target catalog (databricks, mlflow)"),
+    version: str = typer.Option(None, "--version", help="Version tag"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use")
+):
+    """Publish model to external registry (Databricks, MLflow, etc.)"""
+    try:
+        project = Project.load(profile=profile)
+        
+        # Find the model
+        model_configs = project.select_models(models=model)
+        if not model_configs:
+            console.print(f"Model not found: {model}", style="red")
+            raise typer.Exit(1)
+        
+        if len(model_configs) > 1:
+            console.print(f"Multiple models matched '{model}', be more specific", style="yellow")
+            raise typer.Exit(1)
+        
+        model_config = model_configs[0]
+        model_info = model_config['model']
+        model_name = model_info.get('name')
+        
+        console.print(f"Publishing model: [bold]{model_name}[/bold]")
+        
+        # Get model location
+        location = model_info.get('location', {})
+        if isinstance(location, str):
+            # Parse shorthand like "file/path"
+            if location.startswith('file/'):
+                model_path = location[5:]
+            else:
+                model_path = location
+        else:
+            model_path = location.get('path')
+        
+        if not model_path:
+            console.print("Model location/path not found in config", style="red")
+            raise typer.Exit(1)
+        
+        # Make path absolute relative to project root
+        from pathlib import Path
+        if not Path(model_path).is_absolute():
+            model_path = str(project.root_path / model_path)
+        
+        if not Path(model_path).exists():
+            console.print(f"Model file not found: {model_path}", style="red")
+            raise typer.Exit(1)
+        
+        # Determine target catalog
+        catalogs = project.config.get('catalogs', {})
+        
+        if not catalogs:
+            console.print("No catalogs configured. Add a catalog section to mrm_project.yml:", style="yellow")
+            console.print("""
+catalogs:
+  databricks:
+    type: databricks_unity
+    host: https://your-workspace.cloud.databricks.com
+    token: ${DATABRICKS_TOKEN}
+    catalog: main
+    schema: models
+    mlflow_registry: true
+""")
+            raise typer.Exit(1)
+        
+        # Find catalog to use
+        target_cfg = None
+        target_name = to_catalog
+        
+        if target_name:
+            target_cfg = catalogs.get(target_name)
+            if not target_cfg:
+                console.print(f"Catalog not found: {target_name}", style="red")
+                raise typer.Exit(1)
+        else:
+            # Use first databricks catalog
+            for name, cfg in catalogs.items():
+                if cfg.get('type') in ('databricks_unity', 'databricks_uc'):
+                    target_cfg = cfg
+                    target_name = name
+                    break
+        
+        if not target_cfg:
+            console.print("No Databricks Unity Catalog found in config", style="red")
+            raise typer.Exit(1)
+        
+        console.print(f"Target catalog: [cyan]{target_name}[/cyan]")
+        
+        # Publish to Databricks
+        from mrm.core.catalog_backends.databricks_unity import DatabricksUnityCatalog
+        
+        backend = DatabricksUnityCatalog(
+            host=target_cfg.get('host'),
+            token=target_cfg.get('token'),
+            catalog=target_cfg.get('catalog'),
+            schema=target_cfg.get('schema'),
+            mlflow_registry=target_cfg.get('mlflow_registry', True),
+            cache_ttl_seconds=target_cfg.get('cache_ttl_seconds', 300)
+        )
+        
+        # Register
+        console.print(f"Registering model artifact: {model_path}")
+        
+        # Load validation data for signature inference if available
+        validation_data = None
+        try:
+            datasets = model_config.get('datasets', {})
+            if 'validation' in datasets:
+                val_config = datasets['validation']
+                val_type = val_config.get('type', 'csv')
+                val_path = val_config.get('path')
+                
+                if val_path and val_type == 'csv':
+                    from pathlib import Path
+                    import pandas as pd
+                    
+                    # Make path absolute relative to project root
+                    if not Path(val_path).is_absolute():
+                        val_path = str(project.root_path / val_path)
+                    
+                    if Path(val_path).exists():
+                        validation_data = pd.read_csv(val_path)
+                        console.print(f"Loaded validation data for signature: {val_path}")
+        except Exception as e:
+            console.print(f"[yellow]Could not load validation data: {e}[/yellow]")
+        
+        try:
+            entry = backend.register_model(
+                name=model_name,
+                source_uri=model_path,
+                validation_data=validation_data,
+                metadata={
+                    'version': version or model_info.get('version'),
+                    'risk_tier': model_info.get('risk_tier'),
+                    'owner': model_info.get('owner'),
+                    'use_case': model_info.get('use_case')
+                }
+            )
+        except Exception as e:
+            console.print(f"[red] Model registration failed![/red]")
+            console.print(f"[red]Error: {e}[/red]")
+            raise typer.Exit(1)
+        
+        console.print("[green] Model published successfully![/green]")
+        console.print(f"\nRegistered as: [bold]{entry.get('name')}[/bold]")
+        
+        if entry.get('mlflow'):
+            mlflow_info = entry['mlflow']
+            console.print(f"MLflow Model URI: {mlflow_info.get('model_uri')}")
+            if mlflow_info.get('registry_ref'):
+                console.print(f"Registry Version: {mlflow_info.get('registry_ref')}")
+        else:
+            console.print("[yellow]Note: MLflow registration was not performed[/yellow]")
+        
+        console.print("\nNext steps:")
+        console.print("  1. View in Databricks MLflow: Models > Registered Models")
+        console.print("  2. Reference in other projects using catalog URIs")
+        console.print(f"  3. Run: mrm catalog resolve databricks_uc://{model_name}")
+        
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error publishing model: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@app.command()
 def version():
     """Show MRM version"""
     from mrm import __version__
@@ -247,6 +419,184 @@ def _display_test_results(results: Dict):
             )
     
     console.print(table)
+
+
+# ----- Catalog subcommands -----
+catalog_app = typer.Typer(help="Manage external model catalogs")
+app.add_typer(catalog_app, name="catalog")
+
+
+@catalog_app.command("resolve")
+def catalog_resolve(
+    uri: str = typer.Argument(..., help="Catalog URI, e.g. databricks_uc://catalog.schema/model_name"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use")
+):
+    """Resolve a catalog URI to a model entry"""
+    try:
+        project = Project.load(profile=profile)
+        catalogs = project.config.get('catalogs', {})
+
+        # Find first databricks_unity catalog configuration
+        cfg_name = None
+        for k, v in catalogs.items():
+            if v.get('type') in ('databricks_unity', 'databricks_uc'):
+                cfg_name = k
+                cfg = v
+                break
+
+        if cfg_name is None:
+            console.print("No Databricks Unity Catalog configured in project (catalogs section)", style="red")
+            raise typer.Exit(1)
+
+        from mrm.core.catalog_backends.databricks_unity import DatabricksUnityCatalog
+
+        backend = DatabricksUnityCatalog(
+            host=cfg.get('host'),
+            token=cfg.get('token'),
+            catalog=cfg.get('catalog'),
+            schema=cfg.get('schema'),
+            mlflow_registry=cfg.get('mlflow_registry', True),
+            cache_ttl_seconds=cfg.get('cache_ttl_seconds', 300)
+        )
+
+        # parse uri like databricks_uc://catalog.schema/name or databricks_uc://catalog/schema/name
+        if uri.startswith('databricks_uc://') or uri.startswith('databricks_unity://'):
+            tail = uri.split('://', 1)[1]
+            # support both separators
+            if '/' in tail:
+                catalog_schema, name = tail.rsplit('/', 1)
+            elif '.' in tail:
+                catalog_schema, name = tail.rsplit('.', 1)
+            else:
+                catalog_schema = cfg.get('catalog') or ''
+                name = tail
+
+            if '.' in catalog_schema:
+                catalog, schema = catalog_schema.split('.', 1)
+            elif '/' in catalog_schema:
+                parts = catalog_schema.split('/')
+                catalog = parts[0]
+                schema = parts[1] if len(parts) > 1 else None
+            else:
+                catalog = catalog_schema or cfg.get('catalog')
+                schema = cfg.get('schema')
+
+            entry = backend.get_model_entry(name, catalog=catalog, schema=schema)
+            if entry is None:
+                console.print(f"Model not found: {name}", style="yellow")
+                raise typer.Exit(1)
+
+            import json
+            console.print(json.dumps(entry, indent=2))
+        else:
+            console.print("Only databricks_uc:// URIs are supported by this command", style="red")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f" Error resolving catalog URI: {e}", style="red")
+        raise typer.Exit(1)
+
+
+@catalog_app.command("add")
+def catalog_add(
+    name: str = typer.Option(..., '--name', '-n', help='Model name to register'),
+    from_file: str = typer.Option(..., '--from-file', '-f', help='Path to model artifact file'),
+    catalog: str = typer.Option(None, '--catalog', help='Catalog key from project config'),
+    profile: str = typer.Option('dev', '--profile', '-p', help='Profile to use')
+):
+    """Register a model pointer into the configured Databricks Unity Catalog (scaffold + MLflow register if enabled)"""
+    try:
+        project = Project.load(profile=profile)
+        catalogs = project.config.get('catalogs', {})
+
+        if not catalogs:
+            console.print("No catalogs configured in project", style="red")
+            raise typer.Exit(1)
+
+        # choose specified catalog key or first databricks_unity
+        cfg = None
+        if catalog:
+            cfg = catalogs.get(catalog)
+            if cfg is None:
+                console.print(f"Catalog key not found: {catalog}", style="red")
+                raise typer.Exit(1)
+        else:
+            for k, v in catalogs.items():
+                if v.get('type') in ('databricks_unity', 'databricks_uc'):
+                    cfg = v
+                    break
+
+        if cfg is None:
+            console.print("No Databricks Unity Catalog configured in project", style="red")
+            raise typer.Exit(1)
+
+        from mrm.core.catalog_backends.databricks_unity import DatabricksUnityCatalog
+
+        backend = DatabricksUnityCatalog(
+            host=cfg.get('host'),
+            token=cfg.get('token'),
+            catalog=cfg.get('catalog'),
+            schema=cfg.get('schema'),
+            mlflow_registry=cfg.get('mlflow_registry', True),
+            cache_ttl_seconds=cfg.get('cache_ttl_seconds', 300)
+        )
+
+        if not from_file or not name:
+            console.print("--name and --from-file are required", style="red")
+            raise typer.Exit(1)
+
+        entry = backend.register_model(name=name, source_uri=from_file)
+        import json
+        console.print(json.dumps(entry, indent=2))
+
+    except Exception as e:
+        console.print(f" Error registering model: {e}", style="red")
+        raise typer.Exit(1)
+
+
+@catalog_app.command("refresh")
+def catalog_refresh(
+    catalog: str = typer.Option(None, '--catalog', help='Catalog key from project config'),
+    profile: str = typer.Option('dev', '--profile', '-p', help='Profile to use')
+):
+    """Refresh cached catalog listings"""
+    try:
+        project = Project.load(profile=profile)
+        catalogs = project.config.get('catalogs', {})
+
+        if not catalogs:
+            console.print("No catalogs configured in project", style="red")
+            raise typer.Exit(1)
+
+        cfg = None
+        if catalog:
+            cfg = catalogs.get(catalog)
+        else:
+            for k, v in catalogs.items():
+                if v.get('type') in ('databricks_unity', 'databricks_uc'):
+                    cfg = v
+                    break
+
+        if cfg is None:
+            console.print("No Databricks Unity Catalog configured in project", style="red")
+            raise typer.Exit(1)
+
+        from mrm.core.catalog_backends.databricks_unity import DatabricksUnityCatalog
+        backend = DatabricksUnityCatalog(
+            host=cfg.get('host'),
+            token=cfg.get('token'),
+            catalog=cfg.get('catalog'),
+            schema=cfg.get('schema'),
+            mlflow_registry=cfg.get('mlflow_registry', True),
+            cache_ttl_seconds=cfg.get('cache_ttl_seconds', 300)
+        )
+
+        backend.refresh()
+        console.print("Catalog cache refreshed", style="green")
+
+    except Exception as e:
+        console.print(f" Error refreshing catalog: {e}", style="red")
+        raise typer.Exit(1)
 
 
 def _display_models_table(models: List):
