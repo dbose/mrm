@@ -1,0 +1,67 @@
+# Credit Risk Scorecard Model
+model:
+  name: credit_scorecard
+  version: 1.0.0
+  risk_tier: tier_1
+  
+  description: "Probability of Default model for consumer credit"
+  owner: credit_risk_team
+  use_case: consumer_lending
+  methodology: logistic_regression
+  
+  location:
+    type: file
+    path: models/credit_scorecard.pkl
+  
+datasets:
+  training:
+    type: csv
+    path: data/training.csv
+    
+  validation:
+    type: csv  
+    path: data/validation.csv
+
+tests:
+  # Data quality tests
+  - test: tabular_dataset.MissingValues
+    config:
+      dataset: validation
+      threshold: 0.05
+      
+  - test: tabular_dataset.ClassImbalance
+    config:
+      dataset: validation
+      target_column: target
+      min_ratio: 0.1
+      
+  - test: tabular_dataset.OutlierDetection
+    config:
+      dataset: validation
+      threshold: 0.15
+  
+  # Model performance tests
+  - test: model.Accuracy
+    config:
+      dataset: validation
+      min_score: 0.70
+      
+  - test: model.ROCAUC
+    config:
+      dataset: validation
+      min_score: 0.70
+      
+  - test: model.Gini
+    config:
+      dataset: validation
+      min_score: 0.40
+      
+  - test: model.Precision
+    config:
+      dataset: validation
+      min_score: 0.65
+      
+  - test: model.Recall
+    config:
+      dataset: validation
+      min_score: 0.65

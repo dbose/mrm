@@ -1,0 +1,55 @@
+name: credit_risk_example
+version: 1.0.0
+
+# Model risk governance
+governance:
+  risk_tiers:
+    tier_1: 
+      description: "High materiality, high complexity"
+      validation_frequency: quarterly
+      required_tests: [backtesting, sensitivity, stability]
+    tier_2:
+      description: "Medium materiality"
+      validation_frequency: semi_annual
+      required_tests: [backtesting, sensitivity]
+    tier_3:
+      description: "Low materiality"
+      validation_frequency: annual
+      required_tests: [backtesting]
+
+# Test suites (reusable)
+test_suites:
+  data_quality:
+    - tabular_dataset.MissingValues
+    - tabular_dataset.OutlierDetection
+    - tabular_dataset.FeatureDistribution
+  
+  classification_performance:
+    - model.Accuracy
+    - model.ROCAUC
+    - model.Precision
+    - model.Recall
+    - model.F1Score
+  
+  credit_risk:
+    - model.Gini
+    - model.ROCAUC
+    - tabular_dataset.ClassImbalance
+
+# Backend configuration
+backends:
+  default: local
+  
+  local:
+    type: filesystem
+    path: ~/.mrm/data
+
+# Documentation templates
+docs:
+  templates:
+    - model_description
+    - validation_report
+
+# Custom test paths
+test_paths:
+  - tests/custom
