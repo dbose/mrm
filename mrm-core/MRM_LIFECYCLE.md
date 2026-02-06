@@ -240,27 +240,26 @@ class CustomRegulatoryTest(BaseTest):
 catalogs:
   databricks:
     type: databricks_unity
-    host: https://your-workspace.cloud.databricks.com
-    token: ${DATABRICKS_TOKEN}
-    catalog: main
-    schema: models
-    mlflow_registry: true  # Register to MLflow Registry
+    host: "{{ env_var('DATABRICKS_HOST') }}"  # dbt-style env vars
+    token: "{{ env_var('DATABRICKS_TOKEN') }}"
+    catalog: workspace  # Unity Catalog catalog name
+    schema: default     # Unity Catalog schema name
+    mlflow_registry: true  # Register to MLflow Registry with Unity Catalog
 ```
 
-#### Step 2: Publish Model
+#### Step 2: Set Environment Variables
 ```bash
-# Set credentials
 export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
-export DATABRICKS_TOKEN="dapi..."
+export DATABRICKS_TOKEN="dapi..."  # Generate from User Settings > Developer
+```
 
-# Publish model to Databricks
-mrm publish --model credit_scorecard
+#### Step 3: Publish Model
+```bash
+# Publish model to Databricks Unity Catalog
+mrm publish credit_scorecard
 
-# Publish with version
-mrm publish --model credit_scorecard --version 1.2.0
-
-# Publish to specific catalog
-mrm publish --model credit_scorecard --to databricks
+# Model will be registered as: <catalog>.<schema>.<model_name>
+# Example: workspace.default.credit_scorecard
 ```
 
 #### Alternative: Direct Registration
@@ -274,11 +273,19 @@ mrm catalog add \
 
 ### What Happens During Publish
 
-1. **Model Artifact Upload**: Model file uploaded to MLflow/Databricks
-2. **Metadata Registration**: Model info registered in Unity Catalog
-3. **MLflow Registry**: (If enabled) Model registered in MLflow Model Registry
-4. **Versioning**: Automatic versioning and tagging
-5. **Governance Metadata**: Risk tier, owner, use case attached
+1. **Validation Data Loading**: Loads validation dataset from model config
+2. **Signature Inference**: Automatically infers model signature from validation data (required for Unity Catalog)
+3. **MLflow Experiment**: Creates or uses `/Shared/mrm-experiments` experiment
+4. **Model Artifact Upload**: Model file uploaded to Databricks DBFS via MLflow
+5. **Unity Catalog Registration**: Model registered in Unity Catalog with three-level namespace
+6. **Versioning**: Automatic versioning (Version 1, 2, 3, etc.)
+7. **Governance Metadata**: Risk tier, owner, use case attached as tags
+
+**Requirements:**
+- Model must have validation dataset configured in YAML
+- Model must be sklearn-compatible (supports `predict()` method)
+- Databricks workspace must have Unity Catalog enabled
+- Token must have permissions to create experiments and register models
 
 ### Published Model Reference
 ```yaml

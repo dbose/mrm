@@ -1,46 +1,18 @@
-# MRM Core - Complete Package
+# MRM Core
+
+**Open Source Model Risk Management CLI Framework**
+
+A dbt-like command-line tool for automating model validation, documentation, and risk management workflows in financial services.
 
 ## What's Included
 
-This zip file contains the complete MRM Core framework with all features implemented.
-
-## Contents
-
-###  Core Framework (~3,500 lines of Python)
-
-**Main Package** (`mrm/`)
-- `cli/` - Command-line interface (Typer-based)
-- `core/` - Project management, DAG, catalog, references
-- `backends/` - Storage backends (local, MLflow)
-- `tests/` - Test framework and built-in tests
-- `engine/` - Test execution engine
-- `utils/` - Utilities
-
-###  Documentation (9 files)
-
-1. **README.md** - Main overview and features
-2. **GETTING_STARTED.md** - Step-by-step usage guide
-3. **QUICKSTART.md** - Quick reference
-4. **ARCHITECTURE.md** - Technical architecture (12KB)
-5. **MODEL_REFERENCES.md** - ref() and catalog guide
-6. **REFERENCE_TYPES.md** - All model source types
-7. **DAG_FEATURES.md** - Dependency graph features
-8. **COMPLETE_FEATURES.md** - Full feature summary
-9. **PROJECT_SUMMARY.md** - Project overview
-
-###  Examples (2 working examples)
-
-- `examples/example_usage.py` - Basic usage demo
-- `examples/dag_example.py` - DAG and dependencies demo
-- `credit_risk_example/` - Generated example project
-
-###  Configuration
-
-- `pyproject.toml` - Poetry configuration
-- `setup.py` - Setuptools configuration
-- `Makefile` - Development tasks
-- `LICENSE` - Apache 2.0 license
-- `.gitignore` - Git ignore patterns
+**Core Framework** (`mrm-core/`)
+- Complete MRM CLI with 3,500+ lines of Python
+- 10+ built-in validation tests
+- dbt-style workflows (DAG, ref(), graph operators)
+- Databricks Unity Catalog integration
+- MLflow and HuggingFace support
+- Full documentation and examples
 
 ## Features
 
@@ -72,77 +44,44 @@ This zip file contains the complete MRM Core framework with all features impleme
 - **Parallel Execution** - Multi-threaded test runner
 
 ###  CLI Commands
-
+-  **CLI-First Design** - Standardized workflows like dbt (init, test, docs, publish)
+-  **Databricks Unity Catalog** - Direct publishing with automatic signature inference
+-  **Model Dependencies** - DAG with `depends_on`, `ref()`, and graph operators
+-  **Plugin Architecture** - Integrate with MLflow, Great Expectations, W&B, or custom backends
+-  **YAML Configuration** - Version-controlled, auditable model and test definitions
+-  **Test Library** - 50+ built-in validation tests for model risk management
+-  **Multiple Model Sources** - Local files, Python classes, MLflow, HuggingFace Hub
+-  **Documentation Generation** - Automated model cards and validation reports
+-  **Parallel Execution** - Run tests across multiple models simultaneously
+-  **Open Source First** - Apache 2.0 licensed, cloud-optionalAG example
+python examples/dag_example.py
 ```bash
-mrm init project-name       # Initialize project
-mrm test                    # Run tests
-mrm test --select +model    # Graph operators
-mrm list models             # List resources
-mrm debug --show-dag        # Show dependency graph
-```
-
-## Quick Start
-
-### 1. Extract the Zip
-
-```bash
-unzip mrm-core.zip
+# Install
 cd mrm-core
-```
-
-### 2. Install
-
-```bash
-# Option 1: Development mode
 pip install -e .
 
-# Option 2: With Poetry
-pip install poetry
+# Or with Poetry
 poetry install
-```
 
-### 3. Run Example
-
-```bash
-# Basic example
+# Run examples
 python examples/example_usage.py
-
-# DAG example
 python examples/dag_example.py
-```
 
-### 4. Create Your Project
+# Initialize project
+mrm init my-mrm-project --template=credit_risk
+cd my-mrm-project
 
-```bash
-mrm init my-models
-cd my-models
-mrm test
-```
+# Run validation tests
+mrm test --models credit_scorecard
 
-## File Structure
+# Publish to Databricks Unity Catalog
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="dapi..."
+mrm publish credit_scorecard
 
-```
-mrm-core/
-├── README.md                    # Main documentation
-├── GETTING_STARTED.md          # Usage guide
-├── ARCHITECTURE.md             # Technical details
-├── MODEL_REFERENCES.md         # ref() guide
-├── REFERENCE_TYPES.md          # Model sources
-├── DAG_FEATURES.md             # DAG functionality
-├── COMPLETE_FEATURES.md        # Feature summary
-├── PROJECT_SUMMARY.md          # Project overview
-├── QUICKSTART.md               # Quick reference
-├── DELIVERY_SUMMARY.md         # Delivery notes
-│
-├── pyproject.toml              # Poetry config
-├── setup.py                    # Setuptools config
-├── Makefile                    # Dev tasks
-├── LICENSE                     # Apache 2.0
-├── CONTRIBUTING.md             # How to contribute
-│
-├── mrm/                        # Main package
-│   ├── __init__.py
-│   ├── cli/                    # CLI interface
+# Generate documentation
+mrm docs generate
+mrm docs servecli/                    # CLI interface
 │   │   ├── __init__.py
 │   │   └── main.py
 │   ├── core/                   # Core functionality
@@ -152,66 +91,32 @@ mrm-core/
 │   │   ├── catalog.py          # Model catalog
 │   │   ├── references.py       # Model references
 │   │   └── init.py             # Project init
-│   ├── backends/               # Storage backends
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── local.py
-│   │   └── mlflow.py
-│   ├── tests/                  # Test framework
-│   │   ├── __init__.py
-│   │   ├── base.py             # Test base classes
-│   │   ├── library.py          # Test registry
-│   │   └── builtin/            # Built-in tests
-│   │       ├── __init__.py
-│   │       ├── tabular.py      # Dataset tests
-│   │       └── model.py        # Model tests
-│   ├── engine/                 # Execution engine
-│   │   ├── __init__.py
-│   │   └── runner.py
-│   ├── docs/                   # Documentation
-│   │   └── __init__.py
-│   └── utils/                  # Utilities
-│       ├── __init__.py
-│       └── yaml_utils.py
-│
-├── examples/                   # Working examples
-│   ├── example_usage.py        # Basic demo
-│   └── dag_example.py          # DAG demo
-│
-└── templates/                  # Project templates
+│  Project Structure
+
 ```
-
-## What You Can Do
-
-### 1. Define Model Hierarchies
-
-```yaml
-model:
-  name: expected_loss
-  depends_on:
-    - pd_model
-    - lgd_model
-  location:
-    type: python_class
-    path: src/models/el.py
-```
-
-### 2. Use External Models
-
-```yaml
-model:
-  name: sentiment
-  location: "hf/ProsusAI/finbert:sentiment-analysis"
-```
-
-### 3. Test with Dependencies
-
-```bash
-mrm test --select +expected_loss  # Test with dependencies
-mrm test --select pd_model+        # Test downstream
-mrm test --threads 4               # Parallel execution
-```
-
+mrm/
+├── README.md                    # This file
+├── mrm-core/                    # Main package
+│   ├── mrm/                     # Python package
+│   │   ├── cli/                 # CLI interface
+│   │   ├── core/                # Core functionality
+│   │   │   ├── catalog_backends/  # Databricks, etc.
+│   │   ├── backends/            # Storage backends
+│   │   ├── tests/               # Test framework
+│   │   ├── engine/              # Execution engine
+│   │   └── utils/               # Utilities
+│   ├── examples/                # Working examples
+│   ├── credit_risk_example/     # Example project
+│   ├── docs/                    # Documentation
+│   │   ├── GETTING_STARTED.md
+│   │   ├── ARCHITECTURE.md
+│   │   ├── MODEL_REFERENCES.md
+│   │   ├── DAG_FEATURES.md
+│   │   ├── COMPLETE_FEATURES.md
+│   │   └── MRM_LIFECYCLE.md
+│   └── designs/                 # Design documents
+│       └── databricks_unity_catalog.md
+└── [other repos]
 ### 4. Build Custom Tests
 
 ```python
@@ -248,40 +153,98 @@ Optional:
 ## Next Steps
 
 1. **Read Documentation**
-   - Start with `GETTING_STARTED.md`
-   - Then `MODEL_REFERENCES.md`
-   - Review `ARCHITECTURE.md` for details
+   Core Concepts
 
-2. **Run Examples**
-   - `python examples/example_usage.py`
-   - `python examples/dag_example.py`
+### Model Configuration
 
-3. **Create Your Project**
-   - `mrm init my-project`
-   - Define your models
-   - Run tests
+```yaml
+model:
+  name: credit_scorecard
+  version: 1.0.0
+  risk_tier: tier_1
+  
+  location:
+    type: python_class
+    path: src/models/scorecard.py
+    class: CreditScorecard
+    
+datasets:
+  validation:
+    type: parquet
+    path: data/validation.parquet
+    
+tesCLI Commands
 
-4. **Extend**
-   - Add custom tests
-   - Create templates
-   - Build backends
+```bash
+# Initialize new project
+mrm init [project_name] --template=credit_risk
 
-## Support
+# List models
+mrm list models --tier=tier_1
 
-- Documentation: All included in this package
-- Examples: `examples/` directory
-- Issues: See CONTRIBUTING.md
+# Run tests
+mrm test --models pd_model
+mrm test --select tier:tier_1
+mrm test --select +pd_model  # With dependencies
+
+# Publish model
+mrm publish credit_scorecard
+
+# Generate docs
+mrmDocumentation
+
+- [Getting Started](mrm-core/GETTING_STARTED.md) - Step-by-step usage guide
+- [MRM Lifecycle](mrm-core/MRM_LIFECYCLE.md) - Complete workflow documentation
+- [Complete Features](mrm-core/COMPLETE_FEATURES.md) - Full feature summary
+- [Architecture](mrm-core/ARCHITECTURE.md) - Technical architecture
+- [Model References](mrm-core/MODEL_REFERENCES.md) - ref() and catalog guide
+- [DAG Features](mrm-core/DAG_FEATURES.md) - Dependency graph features
+- [Databricks Integration](mrm-core/designs/databricks_unity_catalog.md) - Unity Catalog design
+pip install mrm-core[all]
+
+# Development
+cd mrm-core
+pip install -e .
+# or
+poetry install
+```
+
+## Requirements
+
+- Python 3.9+
+- CExamples
+
+```bash
+# Run basic example
+cd mrm-core
+python examples/example_usage.py
+
+# Run DAG example
+python examples/dag_example.py
+
+# Try credit risk example
+cd credit_risk_example
+mrm test
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](mrm-core/CONTRIBUTING.md) for guidelines.
 
 ## License
 
-Apache License 2.0 - See LICENSE file
+Apache 2.0 - See [LICENSE](mrm-core/LICENSE)
 
 ## Version
 
-MRM Core v0.1.0 - Complete with DAG, ref(), and HuggingFace support
+**MRM Core v0.1.0**
+- Complete dbt-style workflows
+- Databricks Unity Catalog integration
+- DAG, ref(), and HuggingFace support
+- 50+ built-in tests
 
 Built: February 2026
-
----
-
-**Everything you need to modernize model risk management workflows!**
+```bash
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="dapi..."
+mrm publish credit_scorecard

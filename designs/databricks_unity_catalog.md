@@ -1,4 +1,19 @@
-# Databricks Unity Catalog Integration (Design)
+# Databricks Unity Catalog Integration
+
+## Status
+
+- **Status**: ✅ **IMPLEMENTED**
+- **Version**: v0.1.0
+- **Implementation Date**: February 2026
+- **Features**:
+  - Unity Catalog three-level namespace support
+  - Automatic signature inference from validation data
+  - MLflow tracking and registry integration
+  - dbt-style environment variable interpolation
+  - CLI `mrm publish` command
+  - Proper error handling and validation
+- **Tested Against**: Databricks Free Edition (Community Edition)
+- **Example Model**: credit_scorecard published to workspace.default.credit_scorecard
 
 ## Summary
 

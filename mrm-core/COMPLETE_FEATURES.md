@@ -15,7 +15,39 @@ MRM Core is now a **complete, production-ready Model Risk Management framework**
 
 ## New Features (Just Added)
 
-### 1. Model Dependency DAG
+### 1. Databricks Unity Catalog Integration
+
+**Direct publishing to Databricks with Unity Catalog support:**
+
+```yaml
+# mrm_project.yml
+catalogs:
+  databricks:
+    type: databricks_unity
+    host: "{{ env_var('DATABRICKS_HOST') }}"
+    token: "{{ env_var('DATABRICKS_TOKEN') }}"
+    catalog: workspace
+    schema: default
+    mlflow_registry: true
+```
+
+**Publish models:**
+```bash
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="dapi..."
+mrm publish credit_scorecard
+```
+
+**Features:**
+- Unity Catalog three-level namespace (catalog.schema.model)
+- Automatic model signature inference from validation data
+- MLflow tracking and experiment management
+- dbt-style environment variable interpolation: `{{ env_var('VAR') }}`
+- Proper error handling with clear messages
+- Supports sklearn models with pickle serialization
+- Model versioning and governance metadata
+
+### 2. Model Dependency DAG
 
 **Complete dbt-style dependency management:**
 
