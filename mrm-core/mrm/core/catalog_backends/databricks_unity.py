@@ -271,7 +271,14 @@ class DatabricksUnityCatalog:
                 # This creates the artifact and makes it available for registration
                 if os.path.exists(source_uri) and os.path.isfile(source_uri):
                     import pickle
+                    import sys
                     from mlflow.models.signature import infer_signature
+                    
+                    # Add the project directory to sys.path to handle pickle imports
+                    # This allows models pickled with local module references to be loaded
+                    project_root = os.path.dirname(os.path.dirname(os.path.abspath(source_uri)))
+                    if project_root not in sys.path:
+                        sys.path.insert(0, project_root)
                     
                     with mlflow.start_run():
                         # Log the pickled model as sklearn model

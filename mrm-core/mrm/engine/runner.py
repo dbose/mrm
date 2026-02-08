@@ -296,7 +296,8 @@ class TestRunner:
     def _load_local_model(self, model_ref: Union[ModelRef, Dict, str]) -> Any:
         """Load model from local file (pickle, joblib)"""
         import pickle
-        
+        import sys
+
         # Extract file path
         if isinstance(model_ref, ModelRef):
             file_path = Path(model_ref.identifier)
@@ -304,17 +305,24 @@ class TestRunner:
             file_path = Path(model_ref.get('path', ''))
         else:
             file_path = Path(str(model_ref))
-        
+
         if not file_path.exists():
             raise FileNotFoundError(f"Model file not found: {file_path}")
-        
+
+        # Add project root (cwd) to sys.path so pickle/joblib can
+        # resolve module references for custom model classes (e.g.
+        # models.ccr.ccr_monte_carlo.CCRMonteCarloModel)
+        cwd = str(Path.cwd())
+        if cwd not in sys.path:
+            sys.path.insert(0, cwd)
+
         # Try pickle first
         try:
             with open(file_path, 'rb') as f:
                 return pickle.load(f)
         except Exception as e:
             logger.debug(f"Pickle load failed, trying joblib: {e}")
-        
+
         # Try joblib
         try:
             import joblib

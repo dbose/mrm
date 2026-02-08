@@ -105,7 +105,8 @@ class ModelTest(MRMTest):
 class ComplianceTest(MRMTest):
     """Base class for regulatory compliance tests"""
     category = "compliance"
-    
+    compliance_references: Dict[str, str] = {}  # e.g. {"cps230": "Para 8-10"}
+
     @abstractmethod
     def run(self, model: Any, dataset: Any, **config) -> TestResult:
         """Run compliance test"""

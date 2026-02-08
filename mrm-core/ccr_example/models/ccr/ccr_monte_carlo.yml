@@ -1,0 +1,189 @@
+# ============================================================================
+# CCR Monte Carlo Model Definition
+# Multi-Standard Compliant Configuration
+# ============================================================================
+
+model:
+  name: ccr_monte_carlo
+  version: 1.0.0
+  risk_tier: tier_1
+
+  description: >
+    Vanilla Monte Carlo simulation engine for Counterparty Credit Risk.
+    Simulates interest rate swap mark-to-market paths under Vasicek rate
+    dynamics to compute EPE, PFE, CVA, and EAD for OTC derivative portfolios.
+
+  owner: market_risk_team
+  use_case: counterparty_credit_risk
+  methodology: monte_carlo_simulation
+
+  # CPS 230 Para 12-14: Validation frequency
+  validation_frequency: quarterly
+
+  # CPS 230 Para 8-10: Risk classification
+  materiality: high
+  complexity: high
+
+  location:
+    type: file
+    path: models/ccr_monte_carlo.pkl
+
+  # Model parameters for documentation
+  parameters:
+    n_simulations: 5000
+    n_time_steps: 60
+    dt: 0.0833  # 1/12 monthly
+    confidence_level: 0.95
+    rate_model: vasicek
+    kappa: 0.15
+    theta: 0.03
+    sigma: 0.01
+    r0: 0.025
+
+# Datasets
+datasets:
+  training:
+    type: csv
+    path: data/training.csv
+
+  validation:
+    type: csv
+    path: data/validation.csv
+
+# ============================================================================
+# Validation Tests
+# ============================================================================
+tests:
+  # Test suite: full CCR validation
+  - test_suite: ccr_validation
+
+  # Individual test overrides with specific thresholds
+  - test: ccr.MCConvergence
+    config:
+      dataset: validation
+      max_relative_diff: 0.05
+
+  - test: ccr.EPEReasonableness
+    config:
+      dataset: validation
+      min_epe_ratio: 0.001
+      max_epe_ratio: 0.10
+
+  - test: ccr.PFEBacktest
+    config:
+      dataset: validation
+      max_breach_rate: 0.10
+
+  - test: ccr.CVASensitivity
+    config:
+      dataset: validation
+      pd_bump: 0.50
+      min_sensitivity: 0.10
+      max_sensitivity: 3.0
+
+  - test: ccr.WrongWayRisk
+    config:
+      dataset: validation
+      max_correlation: 0.60
+
+  - test: ccr.ExposureProfileShape
+    config:
+      dataset: validation
+
+  - test: ccr.CollateralEffectiveness
+    config:
+      dataset: validation
+
+  - test: compliance.GovernanceCheck
+    config:
+      dataset: validation
+      model_config:
+        risk_tier: tier_1
+        owner: market_risk_team
+        validation_frequency: quarterly
+        use_case: counterparty_credit_risk
+        methodology: monte_carlo_simulation
+        version: 1.0.0
+
+# ============================================================================
+# Validation Triggers - CPS 230 Para 34-37
+# ============================================================================
+triggers:
+  - type: scheduled
+    schedule_days: 90
+    description: "Quarterly scheduled re-validation"
+    compliance_reference: "CPS 230 Para 34: Periodic review frequency"
+
+  - type: breach
+    threshold: 0.10
+    description: "PFE back-test breach rate exceeds 10%"
+    compliance_reference: "CPS 230 Para 36: Breach-driven re-validation"
+
+  - type: drift
+    threshold: 0.15
+    description: "Monte Carlo output drift exceeds 15%"
+    compliance_reference: "CPS 230 Para 35: Material change detection"
+
+  - type: materiality
+    threshold: 0.20
+    description: "Portfolio notional or counterparty count changes > 20%"
+    compliance_reference: "CPS 230 Para 37: Materiality-driven review"
+
+  - type: regulatory
+    description: "APRA CPS 230 amendment or prudential guidance update"
+    policy_change_flag: false
+    compliance_reference: "CPS 230 Para 42: Regulatory change response"
+
+# ============================================================================
+# Compliance Standards - Pluggable Regulatory Mapping
+# ============================================================================
+compliance:
+  standards:
+    cps230:
+      mapping:
+        governance:
+          - paragraph: "Para 8-10"
+            requirement: "Risk identification and classification"
+            evidence: "Model classified as Tier 1 (high materiality, high complexity)"
+          - paragraph: "Para 11"
+            requirement: "Accountability and ownership"
+            evidence: "Owner: market_risk_team; escalation path defined"
+          - paragraph: "Para 12-14"
+            requirement: "Validation frequency and scope"
+            evidence: "Quarterly validation with full test suite"
+
+        risk_management:
+          - paragraph: "Para 15-18"
+            requirement: "Risk assessment methodology"
+            evidence: "EPE reasonableness test validates exposure bounds"
+          - paragraph: "Para 19-23"
+            requirement: "Concentration and interconnection risk"
+            evidence: "Wrong-way risk test detects PD-exposure correlation"
+          - paragraph: "Para 24-27"
+            requirement: "Scenario analysis and stress testing"
+            evidence: "CVA sensitivity test with PD shocks"
+
+        operational_controls:
+          - paragraph: "Para 28-29"
+            requirement: "Model adequacy and fitness-for-purpose"
+            evidence: "Exposure profile shape validation"
+          - paragraph: "Para 30-33"
+            requirement: "Operational risk controls"
+            evidence: "MC convergence test ensures computational reliability"
+
+        monitoring:
+          - paragraph: "Para 34-37"
+            requirement: "Ongoing monitoring and triggers"
+            evidence: "Automated trigger system: scheduled, breach, drift, materiality"
+          - paragraph: "Para 38-42"
+            requirement: "Risk mitigation and controls"
+            evidence: "Collateral effectiveness test validates CSA modelling"
+
+# Ongoing monitoring
+monitoring:
+  metrics:
+    - expected_positive_exposure
+    - potential_future_exposure
+    - credit_valuation_adjustment
+    - pfe_breach_rate
+    - mc_convergence_ratio

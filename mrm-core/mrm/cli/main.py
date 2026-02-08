@@ -682,5 +682,294 @@ def _display_backends_table(backends: Dict):
     console.print(table)
 
 
+# ----- Docs subcommand (dbt-style) -----
+
+docs_app = typer.Typer(help="Generate documentation and compliance reports")
+app.add_typer(docs_app, name="docs")
+
+
+@docs_app.command("generate")
+def docs_generate(
+    model: str = typer.Argument(..., help="Model name"),
+    compliance: str = typer.Option(
+        None, "--compliance", "-c",
+        help="Compliance standard, e.g. standard:cps230"
+    ),
+    format: str = typer.Option("markdown", "--format", "-f", help="Output format"),
+    output: str = typer.Option(None, "--output", "-o", help="Output file path"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Generate documentation, optionally with compliance reporting.
+
+    Examples:
+
+        mrm docs generate ccr_monte_carlo --compliance standard:cps230
+
+        mrm docs generate ccr_monte_carlo -c standard:cps230 -o report.md
+    """
+    try:
+        project = Project.load(profile=profile)
+
+        model_configs = project.select_models(models=model)
+        if not model_configs:
+            console.print(f"Model not found: {model}", style="red")
+            raise typer.Exit(1)
+
+        model_config = model_configs[0]
+        model_name = model_config['model']['name']
+
+        if not compliance:
+            console.print(f"Model: [bold]{model_name}[/bold]")
+            console.print("No --compliance flag; basic docs only.")
+            console.print("Use --compliance standard:<name> for compliance reports.")
+            return
+
+        # Parse standard:<name> syntax
+        if ":" in compliance:
+            prefix, standard_name = compliance.split(":", 1)
+            if prefix != "standard":
+                console.print(
+                    f"Invalid compliance format '{compliance}'. "
+                    "Use standard:<name> (e.g. standard:cps230)",
+                    style="red",
+                )
+                raise typer.Exit(1)
+        else:
+            standard_name = compliance
+
+        console.print(
+            f"Generating compliance report ({standard_name}) "
+            f"for: [bold]{model_name}[/bold]\n"
+        )
+
+        # Run tests
+        runner = TestRunner(project.config, project.backend, project.catalog)
+        results = runner.run_tests([model_config])
+        model_results = results.get(model_name, {})
+        test_results = model_results.get('test_results', {})
+
+        # Evaluate triggers
+        trigger_events = []
+        triggers_cfg = model_config.get('triggers', [])
+        if triggers_cfg:
+            from mrm.core.triggers import ValidationTriggerEngine
+            trigger_engine = ValidationTriggerEngine()
+            events = trigger_engine.evaluate(
+                model_name=model_name,
+                trigger_configs=triggers_cfg,
+                test_results=test_results,
+            )
+            trigger_events = [e.to_dict() for e in events]
+
+        # Generate compliance report via the generic entry point
+        from mrm.compliance.report_generator import generate_compliance_report
+
+        output_path = (
+            Path(output) if output
+            else Path(f"reports/{model_name}_{standard_name}_report.md")
+        )
+
+        report_text = generate_compliance_report(
+            standard_name=standard_name,
+            model_name=model_name,
+            model_config=model_config,
+            test_results=test_results,
+            trigger_events=trigger_events,
+            output_path=output_path,
+        )
+
+        console.print(f"[green]Report generated: {output_path}[/green]")
+        console.print(f"Report size: {len(report_text)} characters")
+
+        _display_test_results(results)
+
+        if trigger_events:
+            console.print(f"\n[yellow]{len(trigger_events)} trigger(s) fired[/yellow]")
+            for te in trigger_events:
+                console.print(f"  - [{te['trigger_type']}] {te['reason']}")
+
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error generating report: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@docs_app.command("list-standards")
+def docs_list_standards():
+    """List available compliance standards"""
+    from mrm.compliance.registry import compliance_registry
+    compliance_registry.load_builtin_standards()
+    standards = compliance_registry.list_standards()
+
+    if not standards:
+        console.print("No compliance standards available", style="yellow")
+        return
+
+    table = Table(title="Available Compliance Standards", show_header=True)
+    table.add_column("Name", style="cyan")
+    table.add_column("Display Name")
+    table.add_column("Jurisdiction")
+    table.add_column("Version")
+
+    for name in standards:
+        cls = compliance_registry.get(name)
+        table.add_row(name, cls.display_name, cls.jurisdiction, cls.version)
+
+    console.print(table)
+
+
+@app.command(deprecated=True)
+def report(
+    model: str = typer.Argument(..., help="Model name"),
+    format: str = typer.Option("markdown", "--format", "-f", help="Report format"),
+    output: str = typer.Option(None, "--output", "-o", help="Output file path"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """[DEPRECATED] Use 'mrm docs generate --compliance standard:cps230' instead"""
+    import warnings
+    warnings.warn(
+        "The 'report' command is deprecated. "
+        "Use 'mrm docs generate <model> --compliance standard:cps230' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    console.print(
+        "[yellow]DEPRECATED: Use 'mrm docs generate <model> "
+        "--compliance standard:cps230' instead[/yellow]\n"
+    )
+    docs_generate(
+        model=model, compliance="standard:cps230",
+        format=format, output=output, profile=profile,
+    )
+
+
+# ----- Triggers subcommand -----
+triggers_app = typer.Typer(help="Manage validation triggers")
+app.add_typer(triggers_app, name="triggers")
+
+
+@triggers_app.command("check")
+def triggers_check(
+    model: str = typer.Argument(..., help="Model name to check triggers for"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Evaluate validation triggers for a model"""
+    try:
+        project = Project.load(profile=profile)
+        model_configs = project.select_models(models=model)
+
+        if not model_configs:
+            console.print(f"Model not found: {model}", style="red")
+            raise typer.Exit(1)
+
+        model_config = model_configs[0]
+        model_name = model_config['model']['name']
+        triggers_cfg = model_config.get('triggers', [])
+
+        if not triggers_cfg:
+            console.print(f"No triggers configured for {model_name}", style="yellow")
+            raise typer.Exit(0)
+
+        from mrm.core.triggers import ValidationTriggerEngine
+        engine = ValidationTriggerEngine()
+        events = engine.evaluate(model_name=model_name, trigger_configs=triggers_cfg)
+
+        if events:
+            table = Table(title=f"Fired Triggers - {model_name}", show_header=True)
+            table.add_column("ID", style="cyan")
+            table.add_column("Type")
+            table.add_column("Reason")
+            table.add_column("Compliance Ref")
+            table.add_column("Status")
+
+            for e in events:
+                table.add_row(
+                    e.trigger_id,
+                    e.trigger_type.value,
+                    e.reason,
+                    e.compliance_reference,
+                    e.status.value,
+                )
+            console.print(table)
+        else:
+            console.print(f"[green]No triggers fired for {model_name}[/green]")
+
+    except Exception as e:
+        console.print(f" Error checking triggers: {e}", style="red")
+        raise typer.Exit(1)
+
+
+@triggers_app.command("list")
+def triggers_list(
+    model: str = typer.Option(None, "--model", "-m", help="Filter by model name"),
+):
+    """List all trigger events"""
+    try:
+        from mrm.core.triggers import ValidationTriggerEngine
+        engine = ValidationTriggerEngine()
+        events = engine.get_all_events(model_name=model)
+
+        if not events:
+            console.print("No trigger events found", style="yellow")
+            raise typer.Exit(0)
+
+        table = Table(title="Trigger Events", show_header=True)
+        table.add_column("ID", style="cyan")
+        table.add_column("Model")
+        table.add_column("Type")
+        table.add_column("Fired At")
+        table.add_column("Reason")
+        table.add_column("Status")
+
+        for e in events:
+            status_style = {
+                "fired": "red",
+                "acknowledged": "yellow",
+                "resolved": "green",
+            }.get(e.status.value, "white")
+
+            table.add_row(
+                e.trigger_id,
+                e.model_name,
+                e.trigger_type.value,
+                e.fired_at[:19],
+                e.reason[:50],
+                f"[{status_style}]{e.status.value}[/{status_style}]",
+            )
+        console.print(table)
+
+    except Exception as e:
+        console.print(f" Error listing triggers: {e}", style="red")
+        raise typer.Exit(1)
+
+
+@triggers_app.command("resolve")
+def triggers_resolve(
+    model: str = typer.Argument(..., help="Model name to resolve triggers for"),
+):
+    """Resolve all active triggers for a model (after re-validation)"""
+    try:
+        from mrm.core.triggers import ValidationTriggerEngine
+        engine = ValidationTriggerEngine()
+        active = engine.get_active_triggers(model_name=model)
+
+        if not active:
+            console.print(f"No active triggers for {model}", style="green")
+            raise typer.Exit(0)
+
+        engine.resolve_model(model)
+        console.print(
+            f"[green]Resolved {len(active)} trigger(s) for {model}[/green]"
+        )
+
+    except Exception as e:
+        console.print(f" Error resolving triggers: {e}", style="red")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

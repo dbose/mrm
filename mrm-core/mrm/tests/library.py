@@ -147,6 +147,7 @@ class TestRegistry:
         builtin_modules = [
             'mrm.tests.builtin.tabular',
             'mrm.tests.builtin.model',
+            'mrm.tests.builtin.ccr',
         ]
         
         for module_name in builtin_modules:

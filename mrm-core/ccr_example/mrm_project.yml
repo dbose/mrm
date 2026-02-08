@@ -1,0 +1,122 @@
+name: ccr_example
+version: 1.0.0
+
+# ============================================================================
+# Model Risk Governance Framework
+# ============================================================================
+governance:
+  risk_tiers:
+    tier_1:
+      description: "High materiality, high complexity - CCR Monte Carlo models"
+      validation_frequency: quarterly
+      required_tests:
+        - ccr.MCConvergence
+        - ccr.EPEReasonableness
+        - ccr.PFEBacktest
+        - ccr.CVASensitivity
+        - ccr.WrongWayRisk
+        - ccr.ExposureProfileShape
+        - ccr.CollateralEffectiveness
+        - compliance.GovernanceCheck
+      compliance_reference: "CPS 230 Para 8-14"
+
+    tier_2:
+      description: "Medium materiality - Sensitivity models, CVA engines"
+      validation_frequency: semi_annual
+      required_tests:
+        - ccr.EPEReasonableness
+        - ccr.PFEBacktest
+        - ccr.CVASensitivity
+        - compliance.GovernanceCheck
+      compliance_reference: "CPS 230 Para 8-14"
+
+    tier_3:
+      description: "Low materiality - Reporting and aggregation models"
+      validation_frequency: annual
+      required_tests:
+        - ccr.EPEReasonableness
+        - compliance.GovernanceCheck
+      compliance_reference: "CPS 230 Para 8-14"
+
+# ============================================================================
+# Compliance Standards
+# ============================================================================
+compliance:
+  default_standard: cps230
+  standards:
+    cps230:
+      enabled: true
+
+# Custom compliance standard paths (for local/custom standards)
+compliance_paths:
+  - compliance/custom
+
+# ============================================================================
+# Test Suites
+# ============================================================================
+test_suites:
+  ccr_validation:
+    - ccr.MCConvergence
+    - ccr.EPEReasonableness
+    - ccr.PFEBacktest
+    - ccr.CVASensitivity
+    - ccr.WrongWayRisk
+    - ccr.ExposureProfileShape
+    - ccr.CollateralEffectiveness
+    - compliance.GovernanceCheck
+
+  ccr_quick:
+    - ccr.MCConvergence
+    - ccr.EPEReasonableness
+    - ccr.PFEBacktest
+
+  data_quality:
+    - tabular_dataset.MissingValues
+    - tabular_dataset.OutlierDetection
+    - tabular_dataset.FeatureDistribution
+
+  cps230_compliance:
+    - compliance.GovernanceCheck
+    - ccr.PFEBacktest
+    - ccr.CVASensitivity
+
+# ============================================================================
+# Backend Configuration
+# ============================================================================
+backends:
+  default: local
+
+  local:
+    type: filesystem
+    path: ~/.mrm/data
+
+# ============================================================================
+# Validation Triggers (Global Defaults)
+# ============================================================================
+triggers:
+  defaults:
+    scheduled_days: 90
+    breach_threshold: 0.10
+    drift_threshold: 0.15
+    materiality_threshold: 0.20
+
+# Documentation templates
+docs:
+  templates:
+    - model_description
+    - validation_report
+    - compliance_report
+
+# Custom test paths
+test_paths:
+  - tests/custom
+
+catalogs:
+  databricks:
+    type: databricks_unity
+    host: "{{ env_var('DATABRICKS_HOST') }}"
+    token: "{{ env_var('DATABRICKS_TOKEN') }}"
+    catalog: workspace
+    schema: default
+    mlflow_registry: true
+    cache_ttl_seconds: 300

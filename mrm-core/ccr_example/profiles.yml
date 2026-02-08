@@ -1,0 +1,10 @@
+# MRM Profile Configuration
+mrm:
+  outputs:
+    dev:
+      backend: local
+
+    prod:
+      backend: local
+
+  target: dev
