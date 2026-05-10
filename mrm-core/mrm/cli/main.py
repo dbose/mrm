@@ -682,6 +682,124 @@ def _display_backends_table(backends: Dict):
     console.print(table)
 
 
+def _display_crosswalk_table(items: List[Dict], from_std: Optional[str], to_std: Optional[str], show_all: bool):
+    """Display crosswalk in a rich table format"""
+    
+    # Build title
+    if show_all:
+        title = "Cross-Standard Compliance Crosswalk (All Mappings)"
+    elif from_std and to_std:
+        title = f"Crosswalk: {from_std.upper()} → {to_std.upper()}"
+    elif from_std:
+        title = f"Crosswalk from {from_std.upper()}"
+    elif to_std:
+        title = f"Crosswalk to {to_std.upper()}"
+    else:
+        title = "Compliance Crosswalk"
+    
+    table = Table(title=title, show_header=True, header_style="bold")
+    table.add_column("Concept", style="cyan", width=30)
+    
+    if show_all or not (from_std and to_std):
+        # Show all four standards
+        table.add_column("CPS 230 (AU)", width=15)
+        table.add_column("SR 11-7 (US)", width=15)
+        table.add_column("EU AI Act (EU)", width=15)
+        table.add_column("OSFI E-23 (CA)", width=15)
+    else:
+        # Show only from and to
+        table.add_column(f"{from_std.upper()}", width=20)
+        table.add_column(f"{to_std.upper()}", width=20)
+        table.add_column("Notes", width=40)
+    
+    for item in items:
+        concept_name = item['concept']
+        mappings = item['mappings']
+        notes = item.get('notes', '')
+        
+        if show_all or not (from_std and to_std):
+            # Display all four columns
+            cps230_refs = '\n'.join(mappings.get('cps230', [])) or '[dim]—[/dim]'
+            sr117_refs = '\n'.join(mappings.get('sr117', [])) or '[dim]—[/dim]'
+            euaiact_refs = '\n'.join(mappings.get('euaiact', [])) or '[dim]—[/dim]'
+            osfie23_refs = '\n'.join(mappings.get('osfie23', [])) or '[dim]—[/dim]'
+            
+            table.add_row(
+                concept_name,
+                cps230_refs,
+                sr117_refs,
+                euaiact_refs,
+                osfie23_refs
+            )
+        else:
+            # Display from -> to with notes
+            from_refs = '\n'.join(mappings.get(from_std, [])) or '[dim]—[/dim]'
+            to_refs = '\n'.join(mappings.get(to_std, [])) or '[dim]—[/dim]'
+            
+            # Truncate notes if too long
+            if len(notes) > 100:
+                notes = notes[:97] + "..."
+            
+            table.add_row(concept_name, from_refs, to_refs, notes)
+    
+    console.print(table)
+    console.print(f"\n[dim]Total concepts: {len(items)}[/dim]")
+
+
+def _display_crosswalk_markdown(items: List[Dict], from_std: Optional[str], to_std: Optional[str], metadata: Dict, show_all: bool):
+    """Display crosswalk in markdown format suitable for documentation"""
+    
+    # Print title and metadata
+    print("# Cross-Standard Compliance Crosswalk\n")
+    print(f"**Version:** {metadata.get('version', 'unknown')}  ")
+    print(f"**Created:** {metadata.get('created', 'unknown')}  ")
+    print(f"**Concepts Mapped:** {metadata.get('concepts_mapped', len(items))}  \n")
+    
+    print("## Standards Covered\n")
+    for std in metadata.get('standards_covered', []):
+        print(f"- **{std['name']}** ({std['jurisdiction']}): {std['full_name']} — {std['version']}")
+    
+    print("\n## Mappings\n")
+    
+    if show_all or not (from_std and to_std):
+        # Full table with all four standards
+        print("| Concept | CPS 230 (AU) | SR 11-7 (US) | EU AI Act (EU) | OSFI E-23 (CA) |")
+        print("|---------|--------------|--------------|----------------|----------------|")
+        
+        for item in items:
+            concept_name = item['concept']
+            mappings = item['mappings']
+            
+            cps230_refs = '<br>'.join(mappings.get('cps230', [])) or '—'
+            sr117_refs = '<br>'.join(mappings.get('sr117', [])) or '—'
+            euaiact_refs = '<br>'.join(mappings.get('euaiact', [])) or '—'
+            osfie23_refs = '<br>'.join(mappings.get('osfie23', [])) or '—'
+            
+            print(f"| {concept_name} | {cps230_refs} | {sr117_refs} | {euaiact_refs} | {osfie23_refs} |")
+    
+    else:
+        # Two-column from -> to with descriptions
+        print(f"### {from_std.upper()} → {to_std.upper()}\n")
+        print(f"| Concept | {from_std.upper()} | {to_std.upper()} | Notes |")
+        print("|---------|" + "-" * (len(from_std) + 3) + "|" + "-" * (len(to_std) + 3) + "|-------|")
+        
+        for item in items:
+            concept_name = item['concept']
+            mappings = item['mappings']
+            notes = item.get('notes', '')
+            
+            from_refs = '<br>'.join(mappings.get(from_std, [])) or '—'
+            to_refs = '<br>'.join(mappings.get(to_std, [])) or '—'
+            
+            print(f"| {concept_name} | {from_refs} | {to_refs} | {notes} |")
+    
+    # Print footer notes
+    notes_text = metadata.get('notes', '')
+    if notes_text:
+        print("\n## Notes\n")
+        print(notes_text)
+
+
 # ----- Docs subcommand (dbt-style) -----
 
 docs_app = typer.Typer(help="Generate documentation and compliance reports")
@@ -690,7 +808,8 @@ app.add_typer(docs_app, name="docs")
 
 @docs_app.command("generate")
 def docs_generate(
-    model: str = typer.Argument(..., help="Model name"),
+    model: str = typer.Argument(None, help="Model name"),
+    select: str = typer.Option(None, "--select", "-s", help="Model selection criteria"),
     compliance: str = typer.Option(
         None, "--compliance", "-c",
         help="Compliance standard, e.g. standard:cps230"
@@ -705,12 +824,26 @@ def docs_generate(
 
         mrm docs generate ccr_monte_carlo --compliance standard:cps230
 
+        mrm docs generate --select ccr_monte_carlo --compliance standard:sr117
+
         mrm docs generate ccr_monte_carlo -c standard:cps230 -o report.md
     """
     try:
         project = Project.load(profile=profile)
 
-        model_configs = project.select_models(models=model)
+        # Support both positional model argument and --select option
+        model_selector = model or select
+        if not model_selector:
+            console.print(
+                "Error: Must specify a model either as an argument or via --select",
+                style="red"
+            )
+            console.print("\nExamples:")
+            console.print("  mrm docs generate ccr_monte_carlo --compliance standard:cps230")
+            console.print("  mrm docs generate --select ccr_monte_carlo --compliance standard:sr117")
+            raise typer.Exit(1)
+
+        model_configs = project.select_models(models=model_selector, select=select if not model else None)
         if not model_configs:
             console.print(f"Model not found: {model}", style="red")
             raise typer.Exit(1)
@@ -791,6 +924,9 @@ def docs_generate(
     except FileNotFoundError as e:
         console.print(f" {e}", style="red")
         raise typer.Exit(1)
+    except typer.Exit:
+        # Re-raise typer.Exit to allow clean exit
+        raise
     except Exception as e:
         console.print(f" Error generating report: {e}", style="red")
         import traceback
@@ -820,6 +956,123 @@ def docs_list_standards():
         table.add_row(name, cls.display_name, cls.jurisdiction, cls.version)
 
     console.print(table)
+
+
+@docs_app.command("crosswalk")
+def docs_crosswalk(
+    from_std: str = typer.Option(None, "--from", help="Source standard (e.g. cps230)"),
+    to_std: str = typer.Option(None, "--to", help="Target standard (e.g. sr117)"),
+    concept: str = typer.Option(None, "--concept", help="Filter by concept name"),
+    show_all: bool = typer.Option(False, "--all", help="Show all mappings (full crosswalk matrix)"),
+    format: str = typer.Option("table", "--format", "-f", help="Output format: table or markdown")
+):
+    """Display cross-standard compliance crosswalk
+
+    Examples:
+
+        mrm docs crosswalk --from cps230 --to sr117
+
+        mrm docs crosswalk --from euaiact --to osfie23 --concept "Validation"
+
+        mrm docs crosswalk --all
+
+        mrm docs crosswalk --all --format markdown > crosswalk.md
+    """
+    import yaml
+    from pathlib import Path as PathLib
+    
+    try:
+        # Load crosswalk YAML
+        crosswalk_path = PathLib(__file__).parent.parent / "compliance" / "crosswalks" / "standards.yaml"
+        
+        if not crosswalk_path.exists():
+            console.print(f"Crosswalk file not found: {crosswalk_path}", style="red")
+            raise typer.Exit(1)
+        
+        with open(crosswalk_path, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        crosswalk_items = data.get('crosswalk', [])
+        metadata = data.get('metadata', {})
+        
+        if not crosswalk_items:
+            console.print("No crosswalk data found", style="yellow")
+            raise typer.Exit(1)
+        
+        # Standard name mapping (handle both short and display names)
+        standard_map = {
+            'cps230': 'cps230',
+            'sr117': 'sr117',
+            'sr11-7': 'sr117',
+            'euaiact': 'euaiact',
+            'eu_ai_act': 'euaiact',
+            'osfie23': 'osfie23',
+            'osfi_e23': 'osfie23',
+        }
+        
+        # Normalize standard names
+        from_std_normalized = standard_map.get(from_std.lower(), from_std.lower()) if from_std else None
+        to_std_normalized = standard_map.get(to_std.lower(), to_std.lower()) if to_std else None
+        
+        # Filter items
+        filtered_items = crosswalk_items
+        
+        if concept:
+            concept_lower = concept.lower()
+            filtered_items = [
+                item for item in filtered_items
+                if concept_lower in item['concept'].lower() or 
+                   concept_lower in item.get('description', '').lower()
+            ]
+        
+        if from_std and not show_all:
+            # Filter to items that have mappings in source standard
+            filtered_items = [
+                item for item in filtered_items
+                if item['mappings'].get(from_std_normalized, [])
+            ]
+        
+        if to_std and not show_all:
+            # Filter to items that have mappings in target standard
+            filtered_items = [
+                item for item in filtered_items
+                if item['mappings'].get(to_std_normalized, [])
+            ]
+        
+        if not filtered_items:
+            console.print("No matching mappings found", style="yellow")
+            raise typer.Exit(1)
+        
+        # Display results
+        if format == "markdown":
+            _display_crosswalk_markdown(
+                filtered_items,
+                from_std_normalized,
+                to_std_normalized,
+                metadata,
+                show_all
+            )
+        else:
+            _display_crosswalk_table(
+                filtered_items,
+                from_std_normalized,
+                to_std_normalized,
+                show_all
+            )
+        
+        # Display metadata footer
+        if not show_all:
+            console.print(f"\n[dim]Crosswalk version: {metadata.get('version', 'unknown')}[/dim]")
+            console.print(f"[dim]Concepts mapped: {metadata.get('concepts_mapped', len(crosswalk_items))}[/dim]")
+    
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error loading crosswalk: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
 
 
 @app.command(deprecated=True)
@@ -968,6 +1221,354 @@ def triggers_resolve(
 
     except Exception as e:
         console.print(f" Error resolving triggers: {e}", style="red")
+        raise typer.Exit(1)
+
+
+# ----- Evidence subcommand -----
+evidence_app = typer.Typer(help="Manage immutable evidence vault")
+app.add_typer(evidence_app, name="evidence")
+
+
+@evidence_app.command("freeze")
+def evidence_freeze(
+    model: str = typer.Argument(..., help="Model name to create evidence for"),
+    backend: str = typer.Option("local", "--backend", "-b", help="Backend: local or s3"),
+    bucket: str = typer.Option(None, "--bucket", help="S3 bucket name (for S3 backend)"),
+    retention: int = typer.Option(2555, "--retention", "-r", help="Retention period in days"),
+    created_by: str = typer.Option(None, "--created-by", help="User identifier (email)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Freeze validation results as immutable evidence packet
+    
+    Examples:
+    
+        mrm evidence freeze ccr_monte_carlo --backend local
+        
+        mrm evidence freeze ccr_monte_carlo --backend s3 --bucket my-evidence --retention 2555
+    """
+    try:
+        from pathlib import Path as PathLib
+        import getpass
+        import os
+        from mrm.evidence.packet import EvidencePacket
+        from mrm.evidence.backends.local import LocalFilesystemBackend
+        
+        # Load project
+        project = Project.load(profile=profile)
+        model_configs = project.select_models(models=model)
+        
+        if not model_configs:
+            console.print(f"Model not found: {model}", style="red")
+            raise typer.Exit(1)
+        
+        model_config = model_configs[0]
+        model_name = model_config['model']['name']
+        model_info = model_config['model']
+        
+        console.print(f"Creating evidence packet for: [bold]{model_name}[/bold]")
+        
+        # Get model artifact path
+        location = model_info.get('location', {})
+        if isinstance(location, str):
+            if location.startswith('file/'):
+                model_path = location[5:]
+            else:
+                model_path = location
+        else:
+            model_path = location.get('path')
+        
+        if not model_path:
+            console.print("Model location/path not found in config", style="red")
+            raise typer.Exit(1)
+        
+        # Make path absolute
+        if not PathLib(model_path).is_absolute():
+            model_path = str(project.root_path / model_path)
+        
+        model_artifact = PathLib(model_path)
+        if not model_artifact.exists():
+            console.print(f"Model artifact not found: {model_path}", style="red")
+            raise typer.Exit(1)
+        
+        # Run tests to get current results
+        console.print("Running validation tests...")
+        from mrm.engine.runner import TestRunner
+        runner = TestRunner(project.config, project.backend, project.catalog)
+        results = runner.run_tests([model_config])
+        
+        model_results = results.get(model_name, {})
+        test_results_raw = model_results.get('test_results', {})
+        
+        if not test_results_raw:
+            console.print("No test results available", style="yellow")
+            raise typer.Exit(1)
+        
+        # Convert TestResult objects to dicts
+        test_results = {}
+        for test_name, test_result in test_results_raw.items():
+            if hasattr(test_result, 'to_dict'):
+                test_results[test_name] = test_result.to_dict()
+            else:
+                test_results[test_name] = test_result
+        
+        # Get compliance mappings (these come from the model config)
+        # For now, we'll extract from model's configured tests
+        compliance_mappings = {}
+        tests_cfg = model_config.get('tests', [])
+        for test_cfg in tests_cfg:
+            if isinstance(test_cfg, dict):
+                test_compliance = test_cfg.get('compliance', {})
+                for standard, paragraphs in test_compliance.items():
+                    if standard not in compliance_mappings:
+                        compliance_mappings[standard] = []
+                    if isinstance(paragraphs, list):
+                        compliance_mappings[standard].extend(paragraphs)
+                    else:
+                        compliance_mappings[standard].append(paragraphs)
+        
+        # Get created_by (user email/username)
+        if not created_by:
+            created_by = os.environ.get('USER', getpass.getuser())
+        
+        # Initialize backend
+        if backend == 'local':
+            evidence_dir = project.root_path / "evidence"
+            backend_impl = LocalFilesystemBackend(evidence_dir)
+            
+        elif backend == 's3':
+            if not bucket:
+                console.print("--bucket required for S3 backend", style="red")
+                raise typer.Exit(1)
+            
+            try:
+                from mrm.evidence.backends.s3_object_lock import S3ObjectLockBackend
+            except ImportError:
+                console.print(
+                    "S3 backend requires boto3: pip install boto3",
+                    style="red"
+                )
+                raise typer.Exit(1)
+            
+            backend_impl = S3ObjectLockBackend(bucket=bucket)
+        
+        else:
+            console.print(f"Unknown backend: {backend}", style="red")
+            raise typer.Exit(1)
+        
+        # Get prior packet (for hash chain)
+        prior_packet = backend_impl.get_latest_packet(model_name)
+        
+        # Create evidence packet
+        console.print("Creating evidence packet...")
+        packet = EvidencePacket.create(
+            model_name=model_name,
+            model_version=model_info.get('version', '1.0'),
+            model_artifact_path=model_artifact,
+            test_results=test_results,
+            compliance_mappings=compliance_mappings,
+            created_by=created_by,
+            prior_packet=prior_packet,
+            metadata={
+                'profile': profile,
+                'risk_tier': model_info.get('risk_tier'),
+                'owner': model_info.get('owner')
+            }
+        )
+        
+        # Verify packet before freezing
+        if not packet.verify_hash():
+            console.print("Packet hash verification failed", style="red")
+            raise typer.Exit(1)
+        
+        # Freeze packet
+        console.print(f"Freezing packet with {backend} backend...")
+        uri = backend_impl.freeze(packet, retention_days=retention)
+        
+        console.print(f"\n[green]✓ Evidence packet frozen successfully[/green]")
+        console.print(f"  Packet ID: {packet.packet_id}")
+        console.print(f"  URI: {uri}")
+        console.print(f"  Content Hash: {packet.content_hash}")
+        console.print(f"  Model Artifact Hash: {packet.model_artifact_hash}")
+        
+        if prior_packet:
+            console.print(f"  Prior Packet: {prior_packet.packet_id}")
+            console.print(f"  Chain Length: {len(backend_impl.list_packets(model_name=model_name))}")
+        else:
+            console.print(f"  [yellow]First packet in chain[/yellow]")
+        
+        console.print(f"\nNext steps:")
+        console.print(f"  mrm evidence verify {uri}")
+        console.print(f"  mrm evidence list --model {model_name}")
+    
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error freezing evidence: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@evidence_app.command("verify")
+def evidence_verify(
+    uri: str = typer.Argument(..., help="Evidence packet URI"),
+    chain: bool = typer.Option(True, "--chain/--no-chain", help="Verify full hash chain"),
+):
+    """Verify evidence packet integrity and hash chain
+    
+    Examples:
+    
+        mrm evidence verify file:///path/to/packets.jsonl#packet-id
+        
+        mrm evidence verify s3://bucket/evidence/model/packet-id.json --chain
+    """
+    try:
+        from pathlib import Path as PathLib
+        from mrm.evidence.backends.local import LocalFilesystemBackend
+        
+        # Determine backend from URI
+        if uri.startswith('file://'):
+            # Parse path from URI
+            path_part = uri[7:].split('#')[0]
+            evidence_dir = PathLib(path_part).parent.parent
+            backend = LocalFilesystemBackend(evidence_dir, warn_on_use=False)
+            
+        elif uri.startswith('s3://'):
+            try:
+                from mrm.evidence.backends.s3_object_lock import S3ObjectLockBackend
+            except ImportError:
+                console.print(
+                    "S3 backend requires boto3: pip install boto3",
+                    style="red"
+                )
+                raise typer.Exit(1)
+            
+            # Parse bucket from URI
+            bucket = uri.split('/')[2]
+            backend = S3ObjectLockBackend(bucket=bucket)
+        
+        else:
+            console.print(f"Unknown URI scheme: {uri}", style="red")
+            raise typer.Exit(1)
+        
+        # Verify packet
+        console.print(f"Verifying: {uri}")
+        result = backend.verify(uri, verify_chain=chain)
+        
+        if result['valid']:
+            console.print(f"\n[green]✓ Verification passed[/green]")
+            console.print(f"  Reason: {result['reason']}")
+            
+            if 'packet_count' in result:
+                console.print(f"  Chain length: {result['packet_count']} packets")
+                console.print(f"  First packet: {result.get('first_packet', 'N/A')}")
+                console.print(f"  Latest packet: {result.get('latest_packet', 'N/A')}")
+            
+            if 'retention_info' in result:
+                retention = result['retention_info']
+                if 'error' not in retention:
+                    console.print(f"  Retention mode: {retention.get('retention_mode', 'N/A')}")
+                    console.print(f"  Retain until: {retention.get('retain_until', 'N/A')}")
+        
+        else:
+            console.print(f"\n[red]✗ Verification failed[/red]")
+            console.print(f"  Reason: {result['reason']}")
+            
+            if 'packet_id' in result:
+                console.print(f"  Packet ID: {result['packet_id']}")
+            
+            raise typer.Exit(1)
+    
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error verifying evidence: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@evidence_app.command("list")
+def evidence_list(
+    model: str = typer.Option(None, "--model", "-m", help="Filter by model name"),
+    backend: str = typer.Option("local", "--backend", "-b", help="Backend: local or s3"),
+    bucket: str = typer.Option(None, "--bucket", help="S3 bucket name (for S3 backend)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """List evidence packets
+    
+    Examples:
+    
+        mrm evidence list --model ccr_monte_carlo
+        
+        mrm evidence list --backend s3 --bucket my-evidence
+    """
+    try:
+        from pathlib import Path as PathLib
+        from mrm.evidence.backends.local import LocalFilesystemBackend
+        
+        # Initialize backend
+        if backend == 'local':
+            project = Project.load(profile=profile)
+            evidence_dir = project.root_path / "evidence"
+            backend_impl = LocalFilesystemBackend(evidence_dir, warn_on_use=False)
+            
+        elif backend == 's3':
+            if not bucket:
+                console.print("--bucket required for S3 backend", style="red")
+                raise typer.Exit(1)
+            
+            try:
+                from mrm.evidence.backends.s3_object_lock import S3ObjectLockBackend
+            except ImportError:
+                console.print(
+                    "S3 backend requires boto3: pip install boto3",
+                    style="red"
+                )
+                raise typer.Exit(1)
+            
+            backend_impl = S3ObjectLockBackend(bucket=bucket)
+        
+        else:
+            console.print(f"Unknown backend: {backend}", style="red")
+            raise typer.Exit(1)
+        
+        # List packets
+        packets = backend_impl.list_packets(model_name=model)
+        
+        if not packets:
+            console.print("No evidence packets found", style="yellow")
+            raise typer.Exit(0)
+        
+        # Display table
+        table = Table(title=f"Evidence Packets ({backend})", show_header=True)
+        table.add_column("Model", style="cyan")
+        table.add_column("Version")
+        table.add_column("Packet ID")
+        table.add_column("Timestamp")
+        table.add_column("Created By")
+        
+        for packet in packets:
+            table.add_row(
+                packet.get('model_name', '')[:20],
+                packet.get('model_version', '')[:10],
+                packet.get('packet_id', '')[:12] + '...',
+                packet.get('timestamp', '')[:19],
+                packet.get('created_by', '')[:20]
+            )
+        
+        console.print(table)
+        console.print(f"\n[dim]Total: {len(packets)} packet(s)[/dim]")
+    
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error listing evidence: {e}", style="red")
+        import traceback
+        traceback.print_exc()
         raise typer.Exit(1)
 
 

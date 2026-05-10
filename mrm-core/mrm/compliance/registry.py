@@ -83,6 +83,9 @@ class ComplianceRegistry:
         """Auto-load all built-in standards shipped with MRM."""
         builtin_modules = [
             "mrm.compliance.builtin.cps230",
+            "mrm.compliance.builtin.sr117",
+            "mrm.compliance.builtin.eu_ai_act",
+            "mrm.compliance.builtin.osfi_e23",
         ]
         for module_name in builtin_modules:
             if module_name in self._loaded_modules:

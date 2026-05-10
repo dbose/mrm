@@ -39,6 +39,22 @@ A dbt-inspired command-line tool for automating model validation, documentation,
 - **Model References** - ref() to other models
 - **Catalogs** - Internal model registries
 
+### Supported Model Types
+
+mrm works with any model framework via MLflow integration or duck-typed interfaces:
+
+| Framework | Integration Method | Documentation |
+|-----------|-------------------|---------------|
+| **Scikit-Learn** | ✅ Native (pickle/joblib) or MLflow sklearn flavor | [Guide](mrm-core/docs/framework_guides/sklearn.md) |
+| **PyTorch** | ✅ MLflow pytorch flavor (recommended) or custom wrapper | [Guide](mrm-core/docs/framework_guides/pytorch.md) |
+| **TensorFlow/Keras** | ✅ MLflow tensorflow flavor or SavedModel | [Guide](mrm-core/docs/framework_guides/tensorflow.md) |
+| **XGBoost / LightGBM** | ✅ MLflow xgboost/lightgbm flavors | See sklearn guide |
+| **Custom Models** | ✅ Implement `predict()` interface | [Guide](mrm-core/docs/framework_guides/custom_wrappers.md) |
+| **APIs / Endpoints** | ✅ Wrap REST/gRPC endpoints | See custom wrappers guide |
+| **Legacy Systems** | ✅ Call SAS/SPSS/R scripts | See custom wrappers guide |
+
+**MLflow is the recommended integration path** — it provides version tracking, experiment management, and unified interfaces across frameworks. Works locally (file-based tracking) or with remote servers. For air-gapped environments, local MLflow tracking provides full functionality without external dependencies.
+
 ### Testing Framework
 
 - **Dataset Tests** - MissingValues, ClassImbalance, OutlierDetection, FeatureDistribution
@@ -55,18 +71,23 @@ Multi-standard regulatory compliance with three-tier plugin discovery:
 
 | Tier | Mechanism | Example |
 |------|-----------|---------|
-| Bundled | Ships with MRM | CPS 230 (Australia) |
-| External pip package | `mrm.compliance` entry point | `pip install mrm-sr117` |
+| Bundled | Ships with MRM | CPS 230 (AU), SR 11-7 (US), EU AI Act (EU), OSFI E-23 (CA) |
+| External pip package | `mrm.compliance` entry point | `pip install mrm-osfi-e23` |
 | Custom local | `compliance_paths` in project YAML | `compliance/custom/my_std.py` |
 
 - **ComplianceStandard ABC** - Abstract base for regulatory standards
 - **ComplianceRegistry** - Decorator-based discovery (`@register_standard`)
 - **Paragraph mapping** - Map tests to regulatory paragraphs with evidence
+- **Cross-standard crosswalk** - Map requirements across jurisdictions (AU/US/EU/CA)
 - **Report generation** - Per-standard compliance reports via `mrm docs generate`
 - **Governance checks** - Automated checks loaded from each standard's definition
 - **Backward compatibility** - Old configs and imports continue to work with deprecation warnings
 
-**Bundled standard:** APRA CPS 230 (Operational Risk Management, Australia)
+**Bundled standards:**
+- **APRA CPS 230** (Operational Risk Management, Australia)
+- **Federal Reserve SR 11-7** (Supervisory Guidance on Model Risk Management, United States)
+- **EU AI Act Annex IV** (Technical Documentation for High-Risk AI Systems, European Union)
+- **OSFI E-23** (Enterprise-Wide Model Risk Management, Canada)
 
 ### Validation Trigger Engine
 
@@ -84,6 +105,42 @@ Automated triggers for re-validation based on regulatory and operational conditi
 - Trigger lifecycle: `active` -> `fired` -> `acknowledged` -> `resolved`
 - JSON-persisted event log with evidence
 - CLI management: `mrm triggers check`, `mrm triggers list`, `mrm triggers resolve`
+
+### Evidence Vault — Immutable Audit Trail
+
+Store validation results as immutable, hash-chained evidence packets for regulatory audit:
+
+| Feature | Description |
+|---------|-------------|
+| **Hash chain** | Each packet references prior packet's hash, creating tamper-evident chain |
+| **Content hashing** | SHA-256 hash of all packet contents for integrity verification |
+| **Model artifact hash** | SHA-256 hash of model file ensures artifact hasn't changed |
+| **Compliance mappings** | Embedded regulatory paragraph mappings from all standards |
+| **Optional GPG signing** | Non-repudiation via GPG signatures |
+| **Pluggable backends** | Local (dev), S3 Object Lock (production SEC 17a-4 compliant) |
+
+**Two backends:**
+
+| Backend | Use Case | Immutability |
+|---------|----------|--------------|
+| **Local filesystem** | Dev/testing only | ⚠️ **NOT REGULATORY COMPLIANT** — files can be deleted |
+| **S3 Object Lock** | Production | ✅ **SEC 17a-4 compliant** — Compliance mode, Cohasset-assessed |
+
+CLI commands:
+```bash
+# Freeze validation results as immutable packet
+mrm evidence freeze ccr_monte_carlo --backend local
+mrm evidence freeze ccr_monte_carlo --backend s3 --bucket my-evidence --retention 2555
+
+# Verify packet integrity and hash chain
+mrm evidence verify file:///path/to/packet#id
+mrm evidence verify s3://bucket/evidence/model/packet-id.json --chain
+
+# List all evidence packets
+mrm evidence list --model ccr_monte_carlo
+```
+
+**Hash chain semantics:** Each packet stores a hash of the previous packet, creating an immutable audit trail. Tampering with any packet breaks the chain.
 
 ### Databricks Unity Catalog & MLflow
 
@@ -209,14 +266,68 @@ Report size: 13059 characters
 ```
 $ mrm docs list-standards
 
-                    Available Compliance Standards
-┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┓
-┃ Name   ┃ Display Name                               ┃ Jurisdiction ┃ Version ┃
-┡━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ cps230 │ APRA CPS 230 -- Operational Risk           │ AU           │ 2024    │
-│        │ Management                                 │              │         │
-└────────┴────────────────────────────────────────────┴──────────────┴─────────┘
+                         Available Compliance Standards                         
+┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Name    ┃ Display Name                              ┃ Jurisdiction ┃ Version ┃
+┡━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ cps230  │ APRA CPS 230 -- Operational Risk          │ AU           │ 2024    │
+│         │ Management                                │              │         │
+│ euaiact │ EU AI Act Annex IV -- Technical           │ EU           │ 2024    │
+│         │ Documentation for High-Risk AI Systems    │              │         │
+│ osfie23 │ OSFI E-23 -- Guideline on Enterprise-Wide │ CA           │ 2023    │
+│         │ Model Risk Management                     │              │         │
+│ sr117   │ Federal Reserve SR 11-7 -- Supervisory    │ US           │ 2011    │
+│         │ Guidance on Model Risk Management         │              │         │
+└─────────┴───────────────────────────────────────────┴──────────────┴─────────┘
 ```
+
+### Cross-Standard Compliance Crosswalk
+
+Map requirements across regulatory frameworks (AU, US, EU, CA):
+
+```
+$ mrm docs crosswalk --from cps230 --to sr117
+
+                           Crosswalk: CPS230 → SR117                            
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Concept             ┃ CPS230    ┃ SR117      ┃ Notes                         ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Independent         │ Para      │ Section    │ All four standards require    │
+│ Validation          │ 12-14     │ II.A       │ independent validation...     │
+│ Ongoing Monitoring  │ Para      │ Section    │ All four standards require    │
+│                     │ 34-37     │ II.C       │ ongoing monitoring...         │
+│ ...                 │ ...       │ ...        │ ...                           │
+└─────────────────────┴───────────┴────────────┴───────────────────────────────┘
+
+Total concepts: 20
+```
+
+View all standard pairs:
+
+```
+$ mrm docs crosswalk --all
+
+               Cross-Standard Compliance Crosswalk (All Mappings)               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Concept                   ┃ CPS 230    ┃ SR 11-7    ┃ EU AI Act ┃ OSFI E-23  ┃
+┃                           ┃ (AU)       ┃ (US)       ┃ (EU)      ┃ (CA)       ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Model Identification...   │ Para 8-10  │ Section IV │ Annex IV.1│ Section 2.1│
+│ Independent Validation    │ Para 12-14 │ Section II │ Annex IV.8│ Section 5.1│
+│ Ongoing Monitoring        │ Para 34-37 │ Section II │ Annex IV.3│ Section 6.1│
+│ ...                       │ ...        │ ...        │ ...       │ ...        │
+└───────────────────────────┴────────────┴────────────┴───────────┴────────────┘
+
+Total concepts: 24
+```
+
+Generate markdown documentation:
+
+```
+$ mrm docs crosswalk --all --format markdown > crosswalk.md
+```
+
+See [mrm-core/docs/CROSSWALK.md](mrm-core/docs/CROSSWALK.md) for the complete mapping.
 
 ### Publish to Databricks Unity Catalog
 
@@ -265,13 +376,25 @@ mrm test --select +pd_model  # With dependencies
 
 # Generate compliance documentation (dbt-style)
 mrm docs generate ccr_monte_carlo --compliance standard:cps230
+mrm docs generate --select ccr_monte_carlo --compliance standard:sr117
+mrm docs generate credit_scorecard --compliance standard:euaiact
 mrm docs generate ccr_monte_carlo -c standard:cps230 -o report.md
 mrm docs list-standards
+mrm docs crosswalk --from cps230 --to sr117
+mrm docs crosswalk --all
+mrm docs crosswalk --all --format markdown > crosswalk.md
 
 # Manage validation triggers
 mrm triggers check ccr_monte_carlo
 mrm triggers list --model ccr_monte_carlo
 mrm triggers resolve ccr_monte_carlo
+
+# Evidence vault - immutable audit trail
+mrm evidence freeze ccr_monte_carlo --backend local
+mrm evidence freeze ccr_monte_carlo --backend s3 --bucket my-evidence --retention 2555
+mrm evidence verify file:///path/to/packets.jsonl#packet-id
+mrm evidence verify s3://bucket/evidence/model/packet-id.json --chain
+mrm evidence list --model ccr_monte_carlo
 
 # Publish to Databricks Unity Catalog
 mrm publish ccr_monte_carlo
