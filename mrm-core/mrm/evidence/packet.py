@@ -274,3 +274,85 @@ class EvidencePacket:
             prior_packet_hash=prior_packet_hash,
             metadata=metadata or {}
         )
+    
+    @classmethod
+    def create_for_llm_endpoint(
+        cls,
+        model_name: str,
+        model_version: str,
+        provider: str,
+        llm_model_name: str,
+        test_results: Dict[str, Any],
+        compliance_mappings: Dict[str, List[str]],
+        created_by: str,
+        prior_packet: Optional['EvidencePacket'] = None,
+        token_usage: Optional[Dict[str, int]] = None,
+        llm_config: Optional[Dict[str, Any]] = None,
+        prompt_version: Optional[str] = None,
+        embedding_model: Optional[str] = None
+    ) -> 'EvidencePacket':
+        """Factory method to create evidence packet for LLM endpoint
+        
+        For LLM endpoints (OpenAI, Anthropic, Bedrock, etc.), there is no
+        local artifact file. Instead, we hash the LLM configuration to create
+        a pseudo-artifact-hash for versioning purposes.
+        
+        Args:
+            model_name: Name of the mrm model
+            model_version: Version of the mrm model
+            provider: LLM provider (openai, anthropic, bedrock, etc.)
+            llm_model_name: Provider's model identifier (gpt-4, claude-3, etc.)
+            test_results: Dictionary of test results
+            compliance_mappings: Paragraph mappings to standards
+            created_by: Human identifier (email or username)
+            prior_packet: Previous packet in chain (None for first)
+            token_usage: Dict with prompt_tokens, completion_tokens, total_tokens
+            llm_config: LLM parameters (temperature, max_tokens, etc.)
+            prompt_version: Version identifier for prompt template
+            embedding_model: Embedding model name (for RAG systems)
+        
+        Returns:
+            New EvidencePacket instance with LLM metadata
+        """
+        import uuid
+        
+        packet_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat() + 'Z'
+        
+        # Create configuration string for hashing
+        config_str = json.dumps({
+            'provider': provider,
+            'model_name': llm_model_name,
+            'config': llm_config or {},
+            'prompt_version': prompt_version,
+            'embedding_model': embedding_model
+        }, sort_keys=True)
+        
+        # Compute hash of configuration (pseudo-artifact-hash)
+        model_artifact_hash = hashlib.sha256(config_str.encode('utf-8')).hexdigest()
+        
+        prior_packet_hash = prior_packet.content_hash if prior_packet else None
+        
+        # Build LLM-specific metadata
+        llm_metadata = {
+            'model_type': 'llm_endpoint',
+            'provider': provider,
+            'llm_model_name': llm_model_name,
+            'llm_config': llm_config or {},
+            'prompt_version': prompt_version,
+            'embedding_model': embedding_model,
+            'token_usage': token_usage or {}
+        }
+        
+        return cls(
+            packet_id=packet_id,
+            model_name=model_name,
+            model_version=model_version,
+            model_artifact_hash=model_artifact_hash,
+            test_results=test_results,
+            compliance_mappings=compliance_mappings,
+            timestamp=timestamp,
+            created_by=created_by,
+            prior_packet_hash=prior_packet_hash,
+            metadata=llm_metadata
+        )

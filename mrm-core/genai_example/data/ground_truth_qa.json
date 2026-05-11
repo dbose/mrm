@@ -1,0 +1,77 @@
+[
+  {
+    "question": "What is the APY for a High-Yield Savings account?",
+    "expected_answer": "2.5% APY",
+    "category": "accounts",
+    "verifiable_facts": [
+      "2.5%",
+      "High-Yield Savings",
+      "$10,000 minimum"
+    ]
+  },
+  {
+    "question": "What is the monthly fee for Standard Checking?",
+    "expected_answer": "$5 monthly fee",
+    "category": "accounts",
+    "verifiable_facts": [
+      "$5",
+      "monthly fee",
+      "waived with $500 minimum"
+    ]
+  },
+  {
+    "question": "What is the current 30-year fixed mortgage rate?",
+    "expected_answer": "6.875%",
+    "category": "loans",
+    "verifiable_facts": [
+      "6.875%",
+      "30-year fixed"
+    ]
+  },
+  {
+    "question": "What security encryption do you use?",
+    "expected_answer": "256-bit encryption",
+    "category": "security",
+    "verifiable_facts": [
+      "256-bit encryption",
+      "multi-factor authentication"
+    ]
+  },
+  {
+    "question": "What is the fraud hotline number?",
+    "expected_answer": "1-800-123-FRAUD",
+    "category": "security",
+    "verifiable_facts": [
+      "1-800-123-FRAUD",
+      "24/7"
+    ]
+  },
+  {
+    "question": "What cashback rate does the Cashback Card offer?",
+    "expected_answer": "1.5% on all purchases",
+    "category": "cards",
+    "verifiable_facts": [
+      "1.5%",
+      "Cashback Card",
+      "$0 annual fee"
+    ]
+  },
+  {
+    "question": "How long does credit limit increase review take?",
+    "expected_answer": "7 days",
+    "category": "cards",
+    "verifiable_facts": [
+      "7 days",
+      "6 months of on-time payments"
+    ]
+  },
+  {
+    "question": "How long until mobile check deposit funds are available?",
+    "expected_answer": "1-2 business days",
+    "category": "digital",
+    "verifiable_facts": [
+      "1-2 business days",
+      "mobile check deposit"
+    ]
+  }
+]

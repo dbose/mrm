@@ -275,6 +275,9 @@ class TestRunner:
         elif location_type == 'catalog':
             return self._load_catalog_model(location)
         
+        elif location_type == 'llm_endpoint':
+            return self._load_llm_endpoint(location)
+        
         else:
             raise ValueError(f"Unsupported model source: {location_type}")
     
@@ -469,6 +472,18 @@ class TestRunner:
         
         except Exception as e:
             raise ValueError(f"Could not load HuggingFace model '{repo_id}': {e}")
+    
+    def _load_llm_endpoint(self, location: Dict) -> Any:
+        """Load LLM endpoint adapter via LiteLLM"""
+        from mrm.backends.llm_endpoints import get_llm_endpoint
+        
+        model_name = location.get('model_name', 'unknown')
+        logger.info(f"Initializing LLM endpoint: {model_name}")
+        
+        try:
+            return get_llm_endpoint(location)
+        except Exception as e:
+            raise ValueError(f"Could not load LLM endpoint '{model_name}': {e}")
     
     def _load_s3_model(self, model_ref: ModelRef) -> Any:
         """Load model from S3"""

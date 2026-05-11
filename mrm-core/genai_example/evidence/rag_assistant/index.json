@@ -1,0 +1,12 @@
+{
+  "packets": [
+    {
+      "packet_id": "fd50adb3-8f7e-477e-934a-e2d954e705d5",
+      "model_name": "rag_assistant",
+      "model_version": "1.0.0",
+      "timestamp": "2026-05-11T04:03:10.633984Z",
+      "created_by": "genai_validation_script",
+      "line_number": 0
+    }
+  ]
+}

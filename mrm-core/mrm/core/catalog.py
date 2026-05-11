@@ -18,6 +18,7 @@ class ModelSource(Enum):
     S3 = "s3"                    # S3 bucket
     GCS = "gcs"                  # Google Cloud Storage
     AZURE = "azure"              # Azure Blob Storage
+    LLM_ENDPOINT = "llm_endpoint"  # LLM API endpoint (OpenAI, Anthropic, etc.)
 
 
 @dataclass

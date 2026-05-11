@@ -10,12 +10,15 @@ A dbt-inspired command-line tool for automating model validation, documentation,
 
 **Core Framework** (`mrm-core/`)
 - Complete MRM CLI with Python
-- 18+ built-in validation tests (tabular dataset + CCR + compliance)
+- 30+ built-in validation tests (tabular, CCR, GenAI compliance)
 - dbt-style workflows (DAG, ref(), graph operators)
-- Pluggable multi-standard compliance framework
+- Pluggable multi-standard compliance framework (4 jurisdictions: AU/US/EU/CA)
 - Validation trigger engine for ongoing monitoring
+- LLM endpoint adapters (OpenAI, Anthropic, Bedrock, Databricks, HuggingFace)
+- GenAI test suite (14 tests: hallucination, bias, robustness, PII, drift, cost/latency)
 - Databricks Unity Catalog + MLflow integration
 - HuggingFace Hub support
+- Worked examples: CCR Monte Carlo, Credit Risk, RAG Customer Service
 
 ---
 
@@ -41,7 +44,7 @@ A dbt-inspired command-line tool for automating model validation, documentation,
 
 ### Supported Model Types
 
-mrm works with any model framework via MLflow integration or duck-typed interfaces:
+mrm works with traditional ML, deep learning, and GenAI models via MLflow integration, native wrappers, or LLM API endpoints:
 
 | Framework | Integration Method | Documentation |
 |-----------|-------------------|---------------|
@@ -49,17 +52,29 @@ mrm works with any model framework via MLflow integration or duck-typed interfac
 | **PyTorch** | ✅ MLflow pytorch flavor (recommended) or custom wrapper | [Guide](mrm-core/docs/framework_guides/pytorch.md) |
 | **TensorFlow/Keras** | ✅ MLflow tensorflow flavor or SavedModel | [Guide](mrm-core/docs/framework_guides/tensorflow.md) |
 | **XGBoost / LightGBM** | ✅ MLflow xgboost/lightgbm flavors | See sklearn guide |
+| **LLM Endpoints** | ✅ 100+ providers via **LiteLLM** (OpenAI, Anthropic, Bedrock, Azure, Cohere, etc.) | [GenAI Example](mrm-core/genai_example/README.md) |
+| **RAG Systems** | ✅ FAISS + sentence-transformers integration | [GenAI Example](mrm-core/genai_example/README.md) |
 | **Custom Models** | ✅ Implement `predict()` interface | [Guide](mrm-core/docs/framework_guides/custom_wrappers.md) |
 | **APIs / Endpoints** | ✅ Wrap REST/gRPC endpoints | See custom wrappers guide |
 | **Legacy Systems** | ✅ Call SAS/SPSS/R scripts | See custom wrappers guide |
 
-**MLflow is the recommended integration path** — it provides version tracking, experiment management, and unified interfaces across frameworks. Works locally (file-based tracking) or with remote servers. For air-gapped environments, local MLflow tracking provides full functionality without external dependencies.
+**MLflow is the recommended integration path for traditional ML/DL** — it provides version tracking, experiment management, and unified interfaces across frameworks. Works locally (file-based tracking) or with remote servers.
+
+**For GenAI/LLM models**, mrm uses **[LiteLLM](https://docs.litellm.ai/)** as a unified interface to 100+ LLM providers, with comprehensive testing (hallucination, bias, prompt injection, PII leakage, drift, etc.). Install with: `pip install 'mrm-core[genai]'`
 
 ### Testing Framework
 
 - **Dataset Tests** - MissingValues, ClassImbalance, OutlierDetection, FeatureDistribution
 - **Model Tests** - Accuracy, ROCAUC, Gini, Precision, Recall, F1Score
 - **CCR Validation Tests** - MCConvergence, EPEReasonableness, PFEBacktest, CVASensitivity, WrongWayRisk, ExposureProfileShape, CollateralEffectiveness
+- **GenAI Tests (14 tests across 7 categories):**
+  - Hallucination & Factual Accuracy - `FactualAccuracy`, `HallucinationRate`
+  - Bias & Fairness - `OutputBias`, `PromptBias`, `DemographicParity`
+  - Robustness & Adversarial - `PromptInjection`, `JailbreakResistance`, `AdversarialPerturbation`
+  - Toxicity & Safety - `ToxicityRate`, `SafetyClassifier`
+  - Drift & Consistency - `OutputConsistency`, `SemanticDrift` (with frouros integration)
+  - PII Leakage - `PIIDetection` (using Microsoft Presidio)
+  - Operational Risk - `LatencyBound`, `CostBound`
 - **Compliance Tests** - GovernanceCheck (pluggable per-standard)
 - **Custom Tests** - Easy plugin system with `@register_test` decorator
 - **Test Suites** - Reusable test collections

@@ -155,7 +155,7 @@ than replacing it. Three layers to keep distinct:
 - ✅ CLI with dbt-style ergonomics (`ref()`, graph operators,
   `--select`, `docs generate`)
 - ✅ DAG management with topological sort and parallel execution
-- ✅ Pluggable test framework (`@register_test`) with 18+ built-ins
+- ✅ Pluggable test framework (`@register_test`) with 30+ built-ins
 - ✅ Pluggable compliance framework (`@register_standard`) with
   three-tier discovery (bundled / pip / local)
 - ✅ Validation trigger engine (scheduled, drift, breach, materiality,
@@ -169,6 +169,10 @@ than replacing it. Three layers to keep distinct:
 - ✅ OSFI E-23 bundled standard for Canadian FRFIs with 7-section framework
 - ✅ Cross-standard crosswalk mapping 24 concepts across 4 jurisdictions (AU/US/EU/CA)
 - ✅ Evidence vault with hash-chained packets, local + S3 Object Lock backends, SEC 17a-4 compliance
+- ✅ GenAI / LLM testing depth: 14 tests across 7 categories (hallucination, bias, robustness, safety, drift, PII, operational)
+- ✅ LLM endpoint adapters: **LiteLLM** unified interface to 100+ providers (OpenAI, Anthropic, Bedrock, Azure, Cohere, etc.) + legacy adapters for backward compatibility
+- ✅ RAG customer service worked example with FAISS retrieval + comprehensive GenAI validation
+- ✅ frouros integration for statistical drift detection on LLM outputs
 
 ---
 
@@ -344,7 +348,7 @@ mrm evidence list --model ccr_monte_carlo
 
 ### P6. ValidMind parity — GenAI / LLM testing depth
 
-- **STATUS:** next (after P5)
+- **STATUS:** done
 - **WEDGE:** Without credible LLM/GenAI test coverage, <brand> can't
   be considered a serious 2026 MRM tool. This is a parity ask, not a
   differentiator.

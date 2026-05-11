@@ -26,10 +26,49 @@ requests = "^2.31.0"
 great-expectations = {version = "^0.18.0", optional = true}
 wandb = {version = "^0.16.0", optional = true}
 
+# Optional GenAI/LLM dependencies
+openai = {version = "^1.0.0", optional = true}
+anthropic = {version = "^0.25.0", optional = true}
+boto3 = {version = "^1.28.0", optional = true}
+sentence-transformers = {version = "^2.2.0", optional = true}
+faiss-cpu = {version = "^1.7.4", optional = true}
+presidio-analyzer = {version = "^2.2.0", optional = true}
+presidio-anonymizer = {version = "^2.2.0", optional = true}
+frouros = {version = "^0.7.0", optional = true}
+transformers = {version = "^4.30.0", optional = true}
+torch = {version = "^2.0.0", optional = true}
+
 [tool.poetry.extras]
 ge = ["great-expectations"]
 wandb = ["wandb"]
-all = ["great-expectations", "wandb"]
+genai = [
+    "litellm",  # Unified interface to 100+ LLM providers (recommended)
+    "openai",  # Legacy provider-specific adapters (backward compatibility)
+    "anthropic",
+    "boto3",
+    "sentence-transformers",
+    "faiss-cpu",
+    "presidio-analyzer",
+    "presidio-anonymizer",
+    "frouros",
+    "transformers",
+    "torch"
+]
+all = [
+    "great-expectations",
+    "litellm",
+    "wandb",
+    "openai",
+    "anthropic",
+    "boto3",
+    "sentence-transformers",
+    "faiss-cpu",
+    "presidio-analyzer",
+    "presidio-anonymizer",
+    "frouros",
+    "transformers",
+    "torch"
+]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
