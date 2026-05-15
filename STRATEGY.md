@@ -391,9 +391,267 @@ validated end-to-end against CPS 230 and EU AI Act mappings.
 
 ---
 
-### P7. ValidMind parity — GRC platform integration
+### P7. 1:1 Decision Replay — the acquirer wedge
 
-- **STATUS:** next (after P6)
+- **STATUS:** done
+- **WEDGE:** The single most defensible positioning sentence in the
+  category. Regulators, plaintiff attorneys, boards, and acquirers will
+  all demand the ability to reconstruct any AI/model decision from its
+  constituent parts. No incumbent ships this as a first-class primitive.
+  Combined with Fed **SR 26-2** (which supersedes SR 11-7 and explicitly
+  expects "tamper-evident, integrity-protected, immutable, complete"
+  decision logs), this is the wedge that turns `mrm-core` from "another
+  governance CLI" into the de-facto open-source replay reference
+  implementation. Inspired by Pelow's *AI Governance Framework* thesis.
+- **EFFORT:** 12-16 days
+
+#### Approach
+
+Every model invocation (traditional model `.predict()` or LLM endpoint
+call) emits a **Decision Record** capturing the four required
+components for replay:
+
+1. **Input state** — exact inference inputs at decision moment
+   (features, prompt, retrieved context, system prompt)
+2. **Model identity** — model URI, version, checkpoint hash, config
+   hash (deterministic — same model + same hash means same weights)
+3. **Inference parameters** — temperature, top-p, retrieval-k,
+   seed, any decoding params; for tabular: preprocessing pipeline hash
+4. **Output record** — raw model output *before* any downstream
+   modification, formatting, or post-processing
+
+Decision Records are append-only, hash-chained to the previous record
+for the same model, and emitted in an OpenTelemetry-native wire format
+(OTLP) so banks can pipe them into existing observability pipelines
+without deploying a new agent.
+
+```
+mrm-core/
+├── replay/
+│   ├── record.py            # DecisionRecord schema (pydantic)
+│   ├── capture.py           # Context manager + decorator for capture
+│   ├── otlp.py              # OTLP export adapter
+│   ├── verify.py            # Replay verification — re-run + diff
+│   └── backends/
+│       ├── local.py         # JSONL hash chain (dev only)
+│       ├── s3.py            # S3 + Object Lock (production)
+│       └── otlp_collector.py # Push to OTel collector
+```
+
+#### CLI shape
+
+```bash
+# Wrap a prediction with capture
+mrm replay record ccr_monte_carlo --inputs trade_book.csv
+
+# Reconstruct a specific decision
+mrm replay reconstruct <record-id>
+
+# Verify replay matches (catches non-determinism, drifted deps)
+mrm replay verify <record-id> --tolerance 1e-6
+
+# Sample-on-demand for regulator
+mrm replay sample --model ccr_monte_carlo --since 2026-01-01 --n 50
+```
+
+#### Definition of done
+
+- `DecisionRecord` pydantic schema with the four required components
+- `@mrm.replay.capture` decorator + context manager for instrumented
+  inference
+- OTLP exporter so records flow to any OTel collector
+- Hash-chain semantics across records for the same model
+- `mrm replay record / reconstruct / verify / sample` commands
+- LLM endpoint adapter (P6) updated to auto-capture prompt + retrieval
+  context as part of the record
+- CCR example and RAG example both demonstrate end-to-end replay
+- README adds "Replay-by-default" as a top-line positioning bullet
+
+---
+
+### P8. Fed SR 26-2 bundled compliance standard
+
+- **STATUS:** next (parallel-safe with P7)
+- **WEDGE:** SR 26-2 supersedes SR 11-7 and SR 21-8 for US banks >$30B
+  assets. Without it, the SR 11-7 plugin reads as outdated to Tier-1
+  US buyers in 2026-2027. SR 26-2 explicitly mandates AI activity
+  logging — natural anchor for P7 (Replay).
+- **EFFORT:** 4-6 days
+
+#### Approach
+
+Mirror `mrm/compliance/builtin/sr117.py`. Add explicit mappings to:
+
+- AI/ML activity logging requirements (anchored to P7 Decision Records)
+- Tamper-evident audit trail requirements (anchored to P5 Evidence
+  Vault hash-chain)
+- Risk-tiering for AI models (model materiality classification)
+- Independent model validation cadence for AI/GenAI models
+
+Cross-reference NIST AI RMF, FFIEC IT Examination Handbook, OCC
+2011-12 in the crosswalk (P4 extension).
+
+#### Definition of done
+
+- `mrm/compliance/builtin/sr26_2.py` shipped with paragraph mappings
+- Crosswalk (P4) extended to map SR 11-7 ↔ SR 26-2 transition
+- Listed in `mrm docs list-standards`
+- CCR example produces a valid SR 26-2 report
+- Replay (P7) records are referenced as the evidence type for the
+  AI-activity-logging clauses
+
+---
+
+### P9. Cryptographic evidence vault hardening
+
+- **STATUS:** next (after P5 evidence module ships; layered enhancement)
+- **WEDGE:** P5 ships hash-chained packets. Banks under SR 26-2 will
+  ask: "Who signed the chain root? How do you prove integrity across
+  the year?" The SR-26.2-MRM reference repo answers this with
+  **HMAC-chained event capture, daily Merkle tree aggregation, HSM-
+  rooted signatures, OTLP wire protocol.** Bringing this design into
+  `mrm-core` (basic) and <brand> Cloud (HSM-backed) is the cleanest
+  OSS/paid line in the entire product.
+- **EFFORT:** 8-12 days OSS + ongoing for Cloud HSM
+
+#### Approach
+
+Extend the existing `evidence/` module:
+
+1. **HMAC-chained events** — each event in a session signed with a
+   session-scoped HMAC key (rotated daily)
+2. **Daily Merkle tree** — at end of each UTC day, aggregate all
+   evidence packets + decision records into a Merkle tree; publish
+   the root
+3. **Root signature** — root signed with a long-lived key. In OSS:
+   GPG / age. In <brand> Cloud: HSM-backed (FIPS 140-2 Level 3+).
+4. **Conformance test vectors** — ship positive + negative test
+   corpus (mirror SR-26.2-MRM's `spec/test-vectors/`) so third parties
+   can prove their implementation conforms.
+
+```
+mrm-core/
+├── evidence/
+│   ├── chain.py             # HMAC-chained event log
+│   ├── merkle.py            # Daily Merkle aggregation + root publication
+│   ├── sign.py              # Root signing (GPG/age in OSS; HSM in Cloud)
+│   └── test_vectors/        # Conformance corpus
+```
+
+#### CLI shape
+
+```bash
+mrm evidence root publish --date 2026-05-15
+mrm evidence root verify <root-hash>
+mrm evidence conformance run    # runs the test-vector suite
+```
+
+#### OSS vs SaaS split
+
+| Capability | mrm-core (OSS) | <brand> Cloud (paid) |
+|---|---|---|
+| HMAC-chained events | ✅ | ✅ |
+| Daily Merkle aggregation | ✅ | ✅ |
+| GPG/age root signing | ✅ | — |
+| **HSM-backed root signing (FIPS 140-2 L3+)** | — | ✅ |
+| Long-term retention SLA (7yr) | — | ✅ |
+| Regulator-portal sample export | — | ✅ |
+| Customer-managed keys (BYOK) | — | ✅ (Enterprise) |
+
+#### Definition of done
+
+- `evidence/chain.py`, `merkle.py`, `sign.py` shipped
+- Daily Merkle root publication command + verification command
+- GPG / age signature support in OSS
+- Conformance test vector suite (positive + negative cases)
+- Spec document under `docs/spec/evidence-vault-v1.md` published with
+  PRD-style lifecycle (mirror SR-26.2-MRM governance pattern)
+- README adds "Cryptographic chain-of-custody" as a top-line bullet
+
+---
+
+### P10. LLM adversarial red-team pack + RAG context capture
+
+- **STATUS:** next (extends P6)
+- **WEDGE:** P6 ships hallucination + bias + toxicity tests. The
+  `llm_eval` repo ships a **50+-template adversarial library** (PII
+  exposure, fiduciary-bypass, system-prompt override) and **financial-
+  F1 entity-weighted accuracy** (severity-weighted errors: $10B vs
+  $10M weighted higher than grammar). Both are domain-specific and
+  directly applicable to bank LLM use-cases.
+- **EFFORT:** 6-8 days
+
+#### Approach
+
+- Ship `mrm/tests/builtin/genai_adversarial.py` with at least 50 attack
+  templates across categories: fiduciary bypass, PII extraction,
+  jailbreak chains, system-prompt override, regulatory-claim
+  fabrication
+- Ship `mrm/tests/builtin/genai_financial.py` with entity-weighted F1
+  for tickers, ISINs, currencies, monetary values
+- Templates live in `mrm/tests/data/adversarial/*.json` so banks can
+  add their own without forking
+- All adversarial test runs auto-emit Decision Records (P7) — every
+  attack attempt is replayable evidence
+- Explainability hooks: optional SHAP/LIME attribution captured in the
+  Decision Record for tabular models (regulator interpretability ask
+  under SR 11-7 §3.3 / SR 26-2)
+
+#### Definition of done
+
+- 50+ adversarial templates shipped, namespaced under
+  `genai.adversarial.*`
+- Financial-F1 test shipped with severity weighting config
+- RAG example (from P6) extended to demonstrate adversarial sweep
+- Decision Records emitted for every adversarial run
+- README updated: "50+ adversarial templates, regulator-shaped reports"
+
+---
+
+### P11. Regulator engagement + spec governance
+
+- **STATUS:** next (non-code; runs in parallel)
+- **WEDGE:** Acquirers in this category pay for **regulator mindshare**
+  more than for revenue at small scale. The SR-26.2-MRM repo's
+  governance posture (`GOVERNANCE.md`, PRD lifecycle, intent to
+  transfer to neutral foundation) is the template. Pelow's framework
+  positions replay capability via comment-letter strategy. Both
+  imitable in weeks, not months.
+- **EFFORT:** 5-7 days docs + ongoing relationship work
+
+#### Approach
+
+1. Add `docs/adr/` directory with Architecture Decision Records for
+   every load-bearing design choice (replay schema, evidence chain,
+   compliance plugin contract). Mirror Pelow's `docs/adr/` pattern.
+2. Add `GOVERNANCE.md` documenting the spec lifecycle for `mrm-core`
+   itself: PRD drafts, public comment via GitHub issues, convergence
+   criteria, neutral-foundation transition statement (CNCF / OpenSSF /
+   Linux Foundation FinOS as candidates).
+3. Add `docs/spec/` with versioned normative specs for:
+   - Decision Record schema (v1)
+   - Evidence Vault chain format (v1)
+   - Compliance Plugin contract (v1)
+4. Submit public comment to **SR 26-2** docket referencing `mrm-core`
+   as a reference implementation. Free; disproportionately valuable
+   for acquirer narrative.
+5. Submit `mrm-core` to **FINOS** AI Governance Framework as an
+   implementation pattern.
+
+#### Definition of done
+
+- `docs/adr/` with ≥5 ADRs (replay, evidence chain, plugin contract,
+  OTLP format, OSS/Cloud split)
+- `GOVERNANCE.md` with PRD lifecycle + foundation-transfer intent
+- `docs/spec/` with ≥3 versioned specs
+- One public comment submitted to a regulator docket citing `mrm-core`
+- One application/PR to FINOS AI Governance Framework
+
+---
+
+### P12. ValidMind parity — GRC platform integration
+
+- **STATUS:** backlog (after P7-P11)
 - **WEDGE:** Banks live in OpenPages/ServiceNow/Workiva. Without push
   connectors, `mrm-core` outputs sit in a developer's filesystem
   unread by the people who actually do governance.
@@ -455,9 +713,9 @@ file the CLI never logs.
 
 ---
 
-### P8. Quant model worked example — XVA via ORE
+### P13. Quant model worked example — XVA via ORE
 
-- **STATUS:** backlog (parallel-safe with P5-P7; pick up when capacity
+- **STATUS:** backlog (parallel-safe with P5-P12; pick up when capacity
   allows)
 - **WEDGE:** Broadens <brand> from "one quant model" to "platform for
   quant model risk." XVA is the founder's stated research interest.
@@ -482,9 +740,9 @@ standards."*
 
 ---
 
-### P9. Quant model worked example — IRB credit risk (PD/LGD/EAD)
+### P14. Quant model worked example — IRB credit risk (PD/LGD/EAD)
 
-- **STATUS:** backlog (after P8)
+- **STATUS:** backlog (after P13)
 - **WEDGE:** Closes the third quant model archetype (counterparty,
   derivatives, credit). Opens Finalyse channel partnership.
 - **EFFORT:** 5-7 days
@@ -509,7 +767,7 @@ mutually beneficial.
 
 ---
 
-### P10. <brand> Cloud — minimum viable hosted layer
+### P15. <brand> Cloud — minimum viable hosted layer
 
 - **STATUS:** backlog (start when first design partner signed)
 - **WEDGE:** The commercial monetisation path. Without it the OSS
@@ -532,17 +790,30 @@ Build choice: thin wrapper around `mrm-core`. Anything in the OSS CLI
 must remain in the OSS CLI. Cloud is *operations* over the CLI, not a
 fork.
 
+**Premium SaaS-only features anchored to OSS primitives:**
+
+| Tier | Feature | Anchored to OSS primitive |
+|---|---|---|
+| Team | Hosted scheduled `mrm test` runs | `mrm-core` CLI |
+| Team | Web UI for lineage, reports, evidence diff | DAG + evidence packets |
+| Team | SSO + RBAC + workspace audit log | — |
+| Business | **HSM-backed evidence signing (FIPS 140-2 L3+)** | P9 chain root signing |
+| Business | **Long-term replay storage (7-yr regulator retention)** | P7 Decision Records |
+| Business | **Regulator-portal export (sample-on-demand)** | P7 `mrm replay sample` |
+| Enterprise | Customer-managed keys (BYOK), VPC deploy, on-prem agent | — |
+| Enterprise | **Certified conformance program** (per P9 test vectors) | P9 conformance suite |
+
 #### Definition of done
 
-Out of scope to specify in detail until P1-P7 are done and a design
+Out of scope to specify in detail until P1-P11 are done and a design
 partner is signed. This entry exists to keep the commercial layer
 visible in the backlog.
 
 ---
 
-### P11. Crosswalk auto-update via authoritative source sync
+### P16. Crosswalk auto-update via authoritative source sync
 
-- **STATUS:** backlog (after P5-P7; requires LLM API + human review
+- **STATUS:** backlog (after P5-P12; requires LLM API + human review
   workflow)
 - **WEDGE:** Standards evolve (CPS 230 updated Nov 2024, EU AI Act
   harmonised standards due Q3 2026). Manual crosswalk maintenance
@@ -675,11 +946,16 @@ Act enforcement creates a buying panic in bank-MRM specifically.
 
 ### What kills the deal
 
-- Single-jurisdiction tool → fixed by P1-P3
+- Single-jurisdiction tool → fixed by P1-P3 ✅
+- Mutable evidence → fixed by P5 ✅
+- No GenAI parity → fixed by P6 ✅
+- **No replay primitive** → fixed by P7 (the wedge)
+- **No US 2026+ jurisdiction** → fixed by P8 (SR 26-2)
+- **No cryptographic chain-of-custody** → fixed by P9
+- **No regulator mindshare** → fixed by P11 (comment letters,
+  FINOS submission, ADR/GOVERNANCE.md posture)
 - No external customers → fixed by design partner work (see channels)
-- Mutable evidence → fixed by P5
-- No GenAI parity → fixed by P6
-- No GRC integration → fixed by P7
+- No GRC integration → fixed by P12
 - Founder-only contributor graph — needs ≥1 external contributor
 - Reinventing infrastructure already owned by the buyer (e.g. building
   proprietary evidence storage instead of writing to S3 Object Lock)

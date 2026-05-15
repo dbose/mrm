@@ -1572,5 +1572,280 @@ def evidence_list(
         raise typer.Exit(1)
 
 
+# ---------------------------------------------------------------------------
+# `mrm replay` — 1:1 Decision Replay (P7)
+# ---------------------------------------------------------------------------
+
+replay_app = typer.Typer(help="Capture, reconstruct, and verify model decisions")
+app.add_typer(replay_app, name="replay")
+
+
+def _load_replay_backend(profile: str, backend: str, bucket: Optional[str] = None):
+    """Resolve a replay backend by name."""
+    from pathlib import Path as PathLib
+
+    if backend == "local":
+        try:
+            project = Project.load(profile=profile)
+            replay_dir = project.root_path / "replay"
+        except Exception:
+            replay_dir = PathLib.cwd() / "replay"
+        from mrm.replay.backends.local import LocalReplayBackend
+        return LocalReplayBackend(replay_dir, warn_on_use=False)
+
+    if backend == "s3":
+        if not bucket:
+            console.print("--bucket required for S3 backend", style="red")
+            raise typer.Exit(1)
+        try:
+            from mrm.replay.backends.s3 import S3ReplayBackend
+        except ImportError:
+            console.print("S3 replay backend requires boto3: pip install boto3", style="red")
+            raise typer.Exit(1)
+        return S3ReplayBackend(bucket=bucket)
+
+    console.print(f"Unknown replay backend: {backend}", style="red")
+    raise typer.Exit(1)
+
+
+@replay_app.command("record")
+def replay_record(
+    model: str = typer.Argument(..., help="Model name to record a decision for"),
+    inputs: str = typer.Option(..., "--inputs", "-i", help="Path to a CSV/JSON input file"),
+    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Run a single inference and capture it as a DecisionRecord.
+
+    Loads the model from the project config, invokes ``.predict(...)``
+    on the inputs, and appends a hash-chained replay record.
+    """
+    try:
+        import json
+        from pathlib import Path as PathLib
+
+        import pandas as pd
+
+        from mrm.engine.runner import TestRunner  # noqa: F401 - ensures registry load
+
+        from mrm.replay.capture import CaptureContext
+        from mrm.replay.record import ModelIdentity
+
+        project = Project.load(profile=profile)
+        model_configs = project.select_models(models=model)
+        if not model_configs:
+            console.print(f"Model not found: {model}", style="red")
+            raise typer.Exit(1)
+        model_config = model_configs[0]["model"]
+
+        location = model_config.get("location", {})
+        if isinstance(location, str):
+            model_path = location[5:] if location.startswith("file/") else location
+        else:
+            model_path = location.get("path")
+
+        if not model_path:
+            console.print("Model location/path not found in config", style="red")
+            raise typer.Exit(1)
+
+        model_path = PathLib(model_path)
+        if not model_path.is_absolute():
+            model_path = project.root_path / model_path
+
+        # Load model artifact (pickle by convention; LLM endpoints handled
+        # separately via the genai adapter).
+        import pickle
+        with open(model_path, "rb") as fh:
+            artifact = pickle.load(fh)
+
+        # Load inputs.
+        inputs_path = PathLib(inputs)
+        if not inputs_path.is_absolute():
+            inputs_path = project.root_path / inputs_path
+        if inputs_path.suffix.lower() == ".csv":
+            frame = pd.read_csv(inputs_path)
+            input_state = {"features": frame.to_dict(orient="records")}
+            predict_payload = frame
+        else:
+            with open(inputs_path, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+            input_state = {"features": payload}
+            predict_payload = payload
+
+        # Best-effort artifact hash.
+        from mrm.evidence.packet import EvidencePacket
+        artifact_hash = EvidencePacket.compute_artifact_hash(model_path)
+
+        identity = ModelIdentity(
+            name=model_config["name"],
+            version=str(model_config.get("version", "unknown")),
+            uri=str(model_path),
+            artifact_hash=artifact_hash,
+        )
+
+        backend_impl = _load_replay_backend(profile, backend, bucket)
+        ctx = CaptureContext(backend_impl, model_identity=identity)
+        prediction = artifact.predict(predict_payload) if hasattr(artifact, "predict") else artifact(predict_payload)
+        # Coerce numpy/pandas outputs through the same helper as the decorator.
+        from mrm.replay.capture import _to_jsonable
+        record = ctx.record(input_state=input_state, output=_to_jsonable(prediction))
+
+        console.print(f"Recorded decision [bold]{record.record_id}[/bold] for {model}")
+        console.print(f"  content_hash:      {record.content_hash}")
+        console.print(f"  prior_record_hash: {record.prior_record_hash or '(genesis)'}")
+    except typer.Exit:
+        raise
+    except FileNotFoundError as e:
+        console.print(f" {e}", style="red")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f" Error recording decision: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@replay_app.command("reconstruct")
+def replay_reconstruct(
+    record_id: str = typer.Argument(..., help="DecisionRecord ID"),
+    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Print the captured input/output for a given record."""
+    try:
+        backend_impl = _load_replay_backend(profile, backend, bucket)
+        record = backend_impl.get(record_id)
+        if record is None:
+            console.print(f"Record not found: {record_id}", style="red")
+            raise typer.Exit(1)
+        console.print_json(record.to_json())
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f" Error reconstructing record: {e}", style="red")
+        raise typer.Exit(1)
+
+
+@replay_app.command("verify")
+def replay_verify(
+    record_id: str = typer.Argument(..., help="DecisionRecord ID"),
+    tolerance: float = typer.Option(1e-9, "--tolerance", help="Numeric replay tolerance"),
+    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Re-run a recorded decision and diff against the captured output."""
+    try:
+        import pickle
+        from pathlib import Path as PathLib
+
+        import pandas as pd
+
+        from mrm.replay.verify import verify as do_verify
+
+        backend_impl = _load_replay_backend(profile, backend, bucket)
+        record = backend_impl.get(record_id)
+        if record is None:
+            console.print(f"Record not found: {record_id}", style="red")
+            raise typer.Exit(1)
+
+        project = Project.load(profile=profile)
+        model_configs = project.select_models(models=record.model_identity.name)
+        if not model_configs:
+            console.print(f"Model not found in project: {record.model_identity.name}", style="red")
+            raise typer.Exit(1)
+        model_config = model_configs[0]["model"]
+        location = model_config.get("location", {})
+        model_path = location[5:] if isinstance(location, str) and location.startswith("file/") else (
+            location if isinstance(location, str) else location.get("path")
+        )
+        model_path = PathLib(model_path)
+        if not model_path.is_absolute():
+            model_path = project.root_path / model_path
+
+        with open(model_path, "rb") as fh:
+            artifact = pickle.load(fh)
+
+        def predictor(features):
+            if isinstance(features, list):
+                features = pd.DataFrame(features)
+            return artifact.predict(features).tolist() if hasattr(artifact, "predict") else artifact(features)
+
+        diff = do_verify(record, predictor, tolerance=tolerance)
+        status = "[green]MATCHED[/green]" if diff.matched else "[red]DRIFT[/red]"
+        console.print(f"Replay verify: {status} (tolerance={tolerance})")
+        if not diff.matched:
+            console.print("Differences:")
+            for d in diff.differences[:20]:
+                console.print(f"  - {d}")
+            raise typer.Exit(2)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f" Error verifying replay: {e}", style="red")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@replay_app.command("sample")
+def replay_sample(
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Restrict to a model"),
+    since: Optional[str] = typer.Option(None, "--since", help="ISO-8601 lower bound"),
+    until: Optional[str] = typer.Option(None, "--until", help="ISO-8601 upper bound"),
+    n: int = typer.Option(10, "--n", help="Max records to return"),
+    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Sample-on-demand record export (regulator-portal shape)."""
+    try:
+        backend_impl = _load_replay_backend(profile, backend, bucket)
+        records = backend_impl.sample(model_name=model, since=since, until=until, n=n)
+        table = Table(title=f"Replay sample (n={len(records)})")
+        table.add_column("Record ID", style="cyan")
+        table.add_column("Model")
+        table.add_column("Version")
+        table.add_column("Timestamp")
+        table.add_column("Content hash")
+        for r in records:
+            table.add_row(
+                r.record_id[:12] + "...",
+                r.model_identity.name[:20],
+                r.model_identity.version[:10],
+                r.timestamp[:19],
+                (r.content_hash or "")[:16] + "...",
+            )
+        console.print(table)
+    except Exception as e:
+        console.print(f" Error sampling records: {e}", style="red")
+        raise typer.Exit(1)
+
+
+@replay_app.command("verify-chain")
+def replay_verify_chain(
+    model: str = typer.Argument(..., help="Model name to verify"),
+    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+):
+    """Walk the hash chain for a model and verify every link."""
+    try:
+        backend_impl = _load_replay_backend(profile, backend, bucket)
+        ok = backend_impl.verify_chain(model)
+        if ok:
+            console.print(f"[green]Chain OK[/green] for {model}")
+        else:
+            console.print(f"[red]Chain BROKEN[/red] for {model}")
+            raise typer.Exit(2)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f" Error verifying chain: {e}", style="red")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

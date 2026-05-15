@@ -97,11 +97,14 @@ class LiteLLMEndpoint:
         # Token counting for cost estimation
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
-        
+
         # RAG retriever (optional)
         self.retriever = None
         if 'retriever' in config:
             self.retriever = self._init_retriever(config['retriever'])
+
+        # Replay capture context (set externally). None = opt-out.
+        self.replay_context: Optional[Any] = None
     
     def _normalize_model_name(self, model_name: str) -> str:
         """
@@ -261,25 +264,25 @@ class LiteLLMEndpoint:
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate completion with RAG retrieval.
-        
+
         Args:
             query: User query
             system_prompt: Optional system prompt
             **kwargs: Provider-specific parameters
-        
+
         Returns:
             Tuple of (response_text, metadata)
         """
-        # Retrieve relevant context
+        retrieved_docs: Optional[list] = None
         if self.retriever:
             retrieved_docs = self.retriever.retrieve(query)
-            
+
             # Build augmented prompt
             context = "\n\n".join([
                 f"[Source {i+1}]: {doc['text']}"
                 for i, doc in enumerate(retrieved_docs)
             ])
-            
+
             augmented_prompt = f"""Use the following information to answer the question.
 
 {context}
@@ -287,17 +290,63 @@ class LiteLLMEndpoint:
 Question: {query}
 
 Answer:"""
-            
+
             # Add retrieval metadata
             response, metadata = self.generate(augmented_prompt, system_prompt, **kwargs)
             metadata['retrieval'] = {
                 'num_docs': len(retrieved_docs),
                 'doc_ids': [doc.get('id') for doc in retrieved_docs]
             }
+            self._emit_replay(query, response, metadata, system_prompt, retrieved_docs, kwargs)
             return response, metadata
         else:
             # No retriever configured, just generate
-            return self.generate(query, system_prompt, **kwargs)
+            response, metadata = self.generate(query, system_prompt, **kwargs)
+            self._emit_replay(query, response, metadata, system_prompt, None, kwargs)
+            return response, metadata
+
+    def complete(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        **kwargs
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Replay-aware completion entry point (parallels legacy adapter)."""
+        return self.generate_with_retrieval(prompt, system_prompt=system_prompt, **kwargs)
+
+    def _emit_replay(
+        self,
+        prompt: str,
+        response: str,
+        metadata: Dict[str, Any],
+        system_prompt: Optional[str],
+        retrieved_docs: Optional[list],
+        extra_kwargs: Dict[str, Any],
+    ) -> None:
+        if not getattr(self, 'replay_context', None):
+            return
+        try:
+            from mrm.replay.instrument import record_llm_call
+            from mrm.replay.record import InferenceParams
+        except ImportError:
+            return
+
+        inference_params = InferenceParams(
+            temperature=extra_kwargs.get('temperature', self.temperature),
+            top_p=extra_kwargs.get('top_p', self.top_p),
+            max_tokens=extra_kwargs.get('max_tokens', self.max_tokens),
+            seed=extra_kwargs.get('seed'),
+            retrieval_k=len(retrieved_docs) if retrieved_docs else None,
+        )
+        record_llm_call(
+            replay_context=self.replay_context,
+            prompt=prompt,
+            response=response,
+            metadata=metadata,
+            system_prompt=system_prompt,
+            retrieved_docs=retrieved_docs,
+            inference_params=inference_params,
+        )
     
     def get_token_usage(self) -> Dict[str, int]:
         """Get cumulative token usage."""

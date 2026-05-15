@@ -16,19 +16,33 @@ logger = logging.getLogger(__name__)
 class TestRunner:
     """Orchestrates test execution"""
     
-    def __init__(self, project_config: Dict[str, Any], backend: BackendAdapter, catalog: Optional[ModelCatalog] = None):
+    def __init__(
+        self,
+        project_config: Dict[str, Any],
+        backend: BackendAdapter,
+        catalog: Optional[ModelCatalog] = None,
+        replay_backend: Optional[Any] = None,
+        replay_default_metadata: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize test runner
-        
+
         Args:
             project_config: Project configuration
             backend: Backend adapter for storing results
             catalog: Model catalog for resolving references
+            replay_backend: Optional ReplayBackend. When provided, every
+                model invocation during a test run is captured as a
+                hash-chained DecisionRecord.
+            replay_default_metadata: Default metadata attached to each
+                emitted record (e.g. trigger source, run id).
         """
         self.config = project_config
         self.backend = backend
         self.catalog = catalog or ModelCatalog()
-        
+        self.replay_backend = replay_backend
+        self.replay_default_metadata = replay_default_metadata or {}
+
         # Load built-in tests
         registry.load_builtin_tests()
     
@@ -122,9 +136,14 @@ class TestRunner:
         """
         model_name = model_config['model']['name']
         logger.info(f"Running tests for model: {model_name}")
-        
+
         # Load model
         model = self._load_model(model_config)
+
+        # Optional replay capture: every model invocation during this
+        # test run emits a hash-chained DecisionRecord.
+        if self.replay_backend is not None:
+            model = self._attach_replay(model, model_config)
         
         # Load datasets
         datasets = self._load_datasets(model_config.get('datasets', {}))
@@ -198,7 +217,50 @@ class TestRunner:
             'tests_passed': sum(1 for r in test_results.values() if r.passed),
             'tests_failed': sum(1 for r in test_results.values() if not r.passed)
         }
-    
+
+    def _attach_replay(self, model: Any, model_config: Dict) -> Any:
+        """Attach a ReplayContext to a loaded model.
+
+        - LLM adapters (LiteLLM / legacy): we set ``model.replay_context``
+          so the adapter's own ``generate_with_retrieval`` / ``complete``
+          methods auto-capture prompt + retrieval + decoding params.
+        - Anything else with ``.predict`` or ``__call__``: we wrap it in
+          a transparent proxy that emits a record on every invocation.
+        """
+        try:
+            from mrm.replay.instrument import ReplayContext, instrument_predictor
+            from mrm.replay.record import ModelIdentity
+        except ImportError:
+            return model
+
+        model_info = model_config.get('model', {})
+        identity = ModelIdentity(
+            name=model_info.get('name', 'unknown'),
+            version=str(model_info.get('version', 'unknown')),
+            uri=str(model_info.get('location', '')) or None,
+            framework=model_info.get('framework'),
+            provider=(model_info.get('location') or {}).get('provider')
+                if isinstance(model_info.get('location'), dict) else None,
+        )
+        context = ReplayContext(
+            backend=self.replay_backend,
+            model_identity=identity,
+            default_metadata=dict(self.replay_default_metadata),
+        )
+
+        # LLM adapters expose a `replay_context` slot.
+        if hasattr(model, 'replay_context') and (
+            hasattr(model, 'generate') or hasattr(model, 'complete')
+        ):
+            model.replay_context = context
+            return model
+
+        # Anything with .predict or callable interface gets wrapped.
+        if hasattr(model, 'predict') or callable(model):
+            return instrument_predictor(model, context)
+
+        return model
+
     def _load_model(self, model_config: Dict) -> Any:
         """
         Load model from configuration with support for multiple sources
