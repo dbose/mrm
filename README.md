@@ -768,21 +768,34 @@ Optional:
 
 ## Documentation
 
-- [Getting Started](mrm-core/docs/GETTING_STARTED.md)
-- [Architecture](mrm-core/docs/ARCHITECTURE.md)
-- [Model References](mrm-core/docs/MODEL_REFERENCES.md)
-- [DAG Features](mrm-core/docs/DAG_FEATURES.md)
-- [Complete Features](mrm-core/docs/COMPLETE_FEATURES.md)
-- [MRM Lifecycle](mrm-core/docs/MRM_LIFECYCLE.md)
-- [Databricks Integration](mrm-core/designs/databricks_unity_catalog.md)
+Repo-root documents:
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — system overview
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to send changes
+- [GOVERNANCE.md](GOVERNANCE.md) — who decides, how specs evolve
+- [MAINTAINERS.md](MAINTAINERS.md) — current maintainers
+
+Under [`docs/`](docs/):
+
+- [Quick Start](docs/guides/QUICKSTART.md)
+- [Getting Started](docs/guides/GETTING_STARTED.md)
+- [MRM Lifecycle](docs/guides/MRM_LIFECYCLE.md)
+- [Model References](docs/guides/MODEL_REFERENCES.md)
+- [Reference Types](docs/guides/REFERENCE_TYPES.md)
+- [DAG Features](docs/guides/DAG_FEATURES.md)
+- [Complete Features](docs/guides/COMPLETE_FEATURES.md)
+- [Cross-standard Crosswalk](docs/CROSSWALK.md)
+- [Architecture Decision Records](docs/adr/README.md)
+- [Normative specifications](docs/spec/README.md)
 
 ## Contributing
 
-See [CONTRIBUTING.md](mrm-core/CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and
+[GOVERNANCE.md](GOVERNANCE.md) for how decisions are made.
 
 ## License
 
-Apache 2.0 - See [LICENSE](mrm-core/LICENSE)
+Apache 2.0 - See [LICENSE](LICENSE)
 
 ## Version
 
