@@ -41,6 +41,10 @@ torch = {version = "^2.0.0", optional = true}
 [tool.poetry.extras]
 ge = ["great-expectations"]
 wandb = ["wandb"]
+# Standalone drift extra -- pulls in frouros only.
+# Banks that can't add new transitive deps still get scipy/numpy
+# fallbacks via the always-installed core.
+drift = ["frouros"]
 genai = [
     "litellm",  # Unified interface to 100+ LLM providers (recommended)
     "openai",  # Legacy provider-specific adapters (backward compatibility)
@@ -50,7 +54,6 @@ genai = [
     "faiss-cpu",
     "presidio-analyzer",
     "presidio-anonymizer",
-    "frouros",
     "transformers",
     "torch"
 ]

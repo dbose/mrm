@@ -174,7 +174,7 @@ than replacing it. Three layers to keep distinct:
 - ✅ GenAI / LLM testing depth: 14 tests across 7 categories (hallucination, bias, robustness, safety, drift, PII, operational)
 - ✅ LLM endpoint adapters: **LiteLLM** unified interface to 100+ providers (OpenAI, Anthropic, Bedrock, Azure, Cohere, etc.) + legacy adapters for backward compatibility
 - ✅ RAG customer service worked example with FAISS retrieval + comprehensive GenAI validation
-- ✅ frouros integration for statistical drift detection on LLM outputs
+- ✅ Drift detection module — pluggable detector ABC + registry; builtin detectors (KS, Wasserstein, Page-Hinkley, MMD) with scipy/numpy fallbacks; opt-in frouros backend via `pip install 'mrm-core[drift]'`; `tabular.DataDrift`, `tabular.ConceptDrift`, `genai.SemanticDrift` routed through the registry; `mrm doctor` reports installed backends
 
 ---
 
@@ -572,9 +572,95 @@ mrm evidence conformance run    # runs the test-vector suite
 
 ---
 
-### P10. LLM adversarial red-team pack + RAG context capture
+### P10. Drift detection — pluggable detectors + frouros optional install
 
-- **STATUS:** next (extends P6)
+- **STATUS:** done
+- **WEDGE:** Drift is the *one* MRM test family every regulator cites
+  (CPS 230 ongoing monitoring, SR 11-7 §II.C, SR 26-2 §II.AI.D, EU AI
+  Act post-market monitoring). STRATEGY.md already claims "frouros
+  integration for statistical drift detection on LLM outputs" — the
+  documented-but-undelivered gap reads worse than missing features.
+  Plus: banks evaluate `mrm-core` on whether it installs cleanly in
+  air-gapped VDIs. A conditional-install `frouros` integration with
+  pure-numpy / scipy fallbacks is genuinely differentiating against
+  ValidMind (which bundles its own monitoring SDK).
+- **EFFORT:** 5-7 days
+
+#### Approach
+
+A new `mrm/drift/` module mirroring the pluggable patterns of
+`compliance/`, `evidence/sign.py`, and `replay/backends/`:
+
+```
+mrm-core/
+├── drift/
+│   ├── base.py           # DriftDetector ABC + DriftResult schema
+│   ├── registry.py       # @register_detector + lazy backend selection
+│   ├── builtin/
+│   │   ├── ks.py         # Kolmogorov-Smirnov (data drift)
+│   │   ├── wasserstein.py# Wasserstein distance (data drift)
+│   │   ├── mmd.py        # Maximum Mean Discrepancy (embeddings / RAG)
+│   │   └── page_hinkley.py # Page-Hinkley (concept drift, streaming)
+│   └── backends/
+│       ├── scipy.py      # Pure scipy.stats fallbacks
+│       └── frouros.py    # frouros-backed implementations (opt-in)
+```
+
+The detector ABC exposes `fit(reference)` + `score(current)` +
+`detect(current, threshold) -> DriftResult`. The registry picks the
+frouros backend when available, falls back to scipy/numpy otherwise.
+Lazy imports inside `run()` so the package import doesn't crash on
+air-gapped installs.
+
+Tests that consume detectors live in the existing test namespaces
+(no separate `drift.*` namespace -- regulators read these as
+performance-monitoring tests):
+
+| Test | Frouros backend | Pure-scipy fallback |
+|---|---|---|
+| `tabular.DataDrift` | KS / Wasserstein / MMD | `scipy.stats.ks_2samp` |
+| `tabular.ConceptDrift` | DDM / EDDM / ADWIN | Page-Hinkley in pure numpy |
+| `genai.SemanticDrift` | MMD over embeddings | cosine-distance KS test |
+| `genai.OutputConsistency` | sliding-window divergence | rolling-std fallback |
+
+#### OSS install footprint
+
+- `frouros` moves from the existing `[genai]` extra to a new
+  `[drift]` extra in `pyproject.toml`.
+- `pip install mrm-core` works on every airgapped bank VDI.
+- `pip install 'mrm-core[drift]'` enables the frouros backends.
+- `mrm doctor` reports which drift backends are available so users
+  know exactly what they have without reading source.
+
+#### CLI surface
+
+```bash
+mrm doctor                          # capability report (drift backends + signers)
+mrm test --select tier:tier_1      # drift tests run as part of the normal pack
+```
+
+Drift tests integrate with P7 (Decision Replay) so the *reference*
+and *current* windows used in a drift computation are captured in
+the DecisionRecord -- regulators can replay exactly what drifted.
+
+#### Definition of done
+
+- `mrm/drift/` module shipped with detector ABC + registry +
+  scipy fallbacks + frouros-backed implementations
+- `tabular.DataDrift`, `tabular.ConceptDrift`, `genai.SemanticDrift`,
+  `genai.OutputConsistency` all routed through the registry
+- `pyproject.toml` exposes `drift` as a standalone extra; `frouros`
+  removed from the `genai` bundle
+- `mrm doctor` command lists available drift backends + crypto signers
+- Pytest suite covers fallback path (no frouros) AND frouros path
+  (skipped on environments without it)
+- README: drift coverage matrix + a "no extra deps required" callout
+
+---
+
+### P11. LLM adversarial red-team pack + RAG context capture
+
+- **STATUS:** next (extends P6 and P10)
 - **WEDGE:** P6 ships hallucination + bias + toxicity tests. The
   `llm_eval` repo ships a **50+-template adversarial library** (PII
   exposure, fiduciary-bypass, system-prompt override) and **financial-
@@ -610,7 +696,7 @@ mrm evidence conformance run    # runs the test-vector suite
 
 ---
 
-### P11. Regulator engagement + spec governance
+### P12. Regulator engagement + spec governance
 
 - **STATUS:** next (non-code; runs in parallel)
 - **WEDGE:** Acquirers in this category pay for **regulator mindshare**
@@ -651,9 +737,9 @@ mrm evidence conformance run    # runs the test-vector suite
 
 ---
 
-### P12. ValidMind parity — GRC platform integration
+### P13. ValidMind parity — GRC platform integration
 
-- **STATUS:** backlog (after P7-P11)
+- **STATUS:** backlog (after P7-P12)
 - **WEDGE:** Banks live in OpenPages/ServiceNow/Workiva. Without push
   connectors, `mrm-core` outputs sit in a developer's filesystem
   unread by the people who actually do governance.
@@ -715,9 +801,9 @@ file the CLI never logs.
 
 ---
 
-### P13. Quant model worked example — XVA via ORE
+### P14. Quant model worked example — XVA via ORE
 
-- **STATUS:** backlog (parallel-safe with P5-P12; pick up when capacity
+- **STATUS:** backlog (parallel-safe with P5-P13; pick up when capacity
   allows)
 - **WEDGE:** Broadens <brand> from "one quant model" to "platform for
   quant model risk." XVA is the founder's stated research interest.
@@ -742,9 +828,9 @@ standards."*
 
 ---
 
-### P14. Quant model worked example — IRB credit risk (PD/LGD/EAD)
+### P15. Quant model worked example — IRB credit risk (PD/LGD/EAD)
 
-- **STATUS:** backlog (after P13)
+- **STATUS:** backlog (after P14)
 - **WEDGE:** Closes the third quant model archetype (counterparty,
   derivatives, credit). Opens Finalyse channel partnership.
 - **EFFORT:** 5-7 days
@@ -769,7 +855,7 @@ mutually beneficial.
 
 ---
 
-### P15. <brand> Cloud — minimum viable hosted layer
+### P16. <brand> Cloud — minimum viable hosted layer
 
 - **STATUS:** backlog (start when first design partner signed)
 - **WEDGE:** The commercial monetisation path. Without it the OSS
@@ -807,15 +893,15 @@ fork.
 
 #### Definition of done
 
-Out of scope to specify in detail until P1-P11 are done and a design
+Out of scope to specify in detail until P1-P12 are done and a design
 partner is signed. This entry exists to keep the commercial layer
 visible in the backlog.
 
 ---
 
-### P16. Crosswalk auto-update via authoritative source sync
+### P17. Crosswalk auto-update via authoritative source sync
 
-- **STATUS:** backlog (after P5-P12; requires LLM API + human review
+- **STATUS:** backlog (after P5-P13; requires LLM API + human review
   workflow)
 - **WEDGE:** Standards evolve (CPS 230 updated Nov 2024, EU AI Act
   harmonised standards due Q3 2026). Manual crosswalk maintenance
@@ -954,10 +1040,11 @@ Act enforcement creates a buying panic in bank-MRM specifically.
 - **No replay primitive** → fixed by P7 (the wedge)
 - **No US 2026+ jurisdiction** → fixed by P8 (SR 26-2)
 - **No cryptographic chain-of-custody** → fixed by P9 ✅
-- **No regulator mindshare** → fixed by P11 (comment letters,
+- **No drift monitoring** → fixed by P10 ✅
+- **No regulator mindshare** → fixed by P12 (comment letters,
   FINOS submission, ADR/GOVERNANCE.md posture)
 - No external customers → fixed by design partner work (see channels)
-- No GRC integration → fixed by P12
+- No GRC integration → fixed by P13
 - Founder-only contributor graph — needs ≥1 external contributor
 - Reinventing infrastructure already owned by the buyer (e.g. building
   proprietary evidence storage instead of writing to S3 Object Lock)

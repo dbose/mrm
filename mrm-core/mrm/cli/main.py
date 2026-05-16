@@ -383,6 +383,54 @@ def version():
     console.print(f"MRM Core version: {__version__}")
 
 
+@app.command()
+def doctor():
+    """Print a capability report of installed backends.
+
+    Tells the user which optional integrations the current Python env
+    can actually use. Designed for air-gapped bank VDIs where pip
+    extras may be partially installed.
+    """
+    from mrm.drift import available_backends, list_detectors
+    from mrm.evidence.sign import list_signers
+
+    # --- Drift detectors ----------------------------------------------
+    console.print("\n[bold cyan]Drift detection[/bold cyan]")
+    drift_table = Table(show_header=True, header_style="bold magenta")
+    drift_table.add_column("Detector")
+    drift_table.add_column("Backend")
+    drift_table.add_column("Kind")
+    drift_table.add_column("Installed")
+    for entry in list_detectors():
+        drift_table.add_row(
+            entry["name"],
+            entry["backend"],
+            entry["kind"],
+            "yes" if entry.get("installed") else "no",
+        )
+    console.print(drift_table)
+    console.print(
+        f"[dim]Installed backends: {', '.join(available_backends())}.[/dim]"
+    )
+    if "frouros" not in available_backends():
+        console.print(
+            "[yellow]Tip:[/yellow] install the optional drift extras with "
+            r"[bold]pip install 'mrm-core\[drift]'[/bold] to enable frouros-backed "
+            "detectors."
+        )
+
+    # --- Evidence signers ---------------------------------------------
+    console.print("\n[bold cyan]Evidence signers[/bold cyan]")
+    sig_table = Table(show_header=True, header_style="bold magenta")
+    sig_table.add_column("Name")
+    sig_table.add_column("Requires HSM?")
+    sig_table.add_column("Tier")
+    for name, meta in list_signers().items():
+        tier = "paid (<brand> Cloud)" if meta["requires_hsm"] else "OSS"
+        sig_table.add_row(name, "yes" if meta["requires_hsm"] else "no", tier)
+    console.print(sig_table)
+
+
 def _display_test_results(results: Dict):
     """Display test results in a table"""
     table = Table(title="Test Results", show_header=True, header_style="bold magenta")

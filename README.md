@@ -94,7 +94,32 @@ Plugins are discovered three ways — bundled, pip-installed via the
 
 Test packs are pluggable via `@register_test`. The roadmap adds a
 50+-template adversarial pack and financial-F1 entity-weighted accuracy
-([P10](STRATEGY.md)).
+([P11](STRATEGY.md)).
+
+### Drift detection
+
+Pluggable detector framework — works without any optional dependency
+(scipy + numpy fallbacks) and upgrades transparently when the
+`frouros` extra is installed.
+
+| Test | Detector | OSS fallback (always installed) | Optional `[drift]` upgrade |
+|---|---|---|---|
+| `tabular.DataDrift` | `ks` | `scipy.stats.ks_2samp` | `frouros.detectors.data_drift.KSTest` |
+| `tabular.DataDrift` | `wasserstein` | `scipy.stats.wasserstein_distance` | frouros equivalent |
+| `tabular.ConceptDrift` | `page_hinkley` | pure-numpy Page-Hinkley | `frouros.detectors.concept_drift.PageHinkley` |
+| `genai.SemanticDrift` | `mmd` | pure-numpy MMD + RBF kernel | `frouros` MMD with frouros alerts |
+| `genai.OutputConsistency` | embedding std-dev | sentence-transformers | — |
+
+```bash
+# baseline install -- drift tests still work via scipy / numpy.
+pip install mrm-core
+
+# upgrade to the higher-fidelity frouros backends:
+pip install 'mrm-core[drift]'
+
+# capability report (which backends + signers are actually available):
+mrm doctor
+```
 
 ### Model sources
 
@@ -373,6 +398,7 @@ mrm evidence conformance  run
 mrm replay  record|reconstruct|verify|sample|verify-chain
 mrm triggers  check|list|run
 mrm catalog  list|publish|sync          # Databricks UC + MLflow
+mrm doctor                              # capability report: drift backends + signers
 mrm debug  --show-config|--show-dag|--show-catalog
 ```
 
@@ -583,12 +609,13 @@ mrm-core/
 - **Unified backend / catalog config resolver — dbt-style `mrm_project.yml` (declarative) + `profiles.yml` (per-target bindings); precedence ladder CLI > env > profile > project > defaults**
 - Evidence vault — hash-chained packets, S3 Object Lock backend
 - **Cryptographic vault hardening — HMAC-chained event log, RFC-6962 Merkle daily root, pluggable Signer (`local` / `gpg` / `age` / `kms` OSS; `cloud-hsm` paid-tier stub), 6 conformance vectors**
+- **Drift detection — pluggable detector registry (KS / Wasserstein / Page-Hinkley / MMD) with scipy/numpy fallbacks always installed; opt-in frouros backend via `pip install 'mrm-core[drift]'`; `tabular.DataDrift` / `tabular.ConceptDrift` / `genai.SemanticDrift` tests routed through the registry; `mrm doctor` capability report**
 - GenAI test pack — 14 tests, LiteLLM unified interface, RAG validation
 - **1:1 Decision Replay — DecisionRecord, capture, OTLP, verify, backends, CLI**
 - Replay capture for **all** model types — sklearn, HF, MLflow, LiteLLM, legacy LLM adapters
 - ADRs + spec PRDs + GOVERNANCE.md posture
 
-**Test coverage:** 135 pytest passing + 46 end-to-end acceptance
+**Test coverage:** 158 pytest passing + 59 end-to-end acceptance
 checks against the worked examples.
 
 **Next:** 50+-template adversarial pack, GRC connectors (OpenPages,

@@ -202,3 +202,134 @@ class FeatureDistribution(DatasetTest):
                 'num_features': len(numeric_cols)
             }
         )
+
+
+# ============================================================================
+# Drift tests (P10) -- pluggable detectors with scipy fallbacks +
+# optional frouros backend.
+# ============================================================================
+
+def _select_drift_dataset(dataset, *, reference, current):
+    """Resolve the reference + current arrays from a dataset payload.
+
+    Supports four shapes:
+
+      1. ``DatasetPair`` with ``.reference`` / ``.current`` attributes.
+      2. dict ``{"reference": ..., "current": ...}``.
+      3. tuple ``(reference, current)``.
+      4. ``dataset`` is the current data; ``reference`` is supplied via
+         config (file path, list, or array).
+    """
+    if hasattr(dataset, "reference") and hasattr(dataset, "current"):
+        return dataset.reference, dataset.current
+    if isinstance(dataset, dict):
+        if "reference" in dataset and "current" in dataset:
+            return dataset["reference"], dataset["current"]
+    if isinstance(dataset, tuple) and len(dataset) == 2:
+        return dataset
+    if reference is not None and current is not None:
+        return reference, current
+    if reference is not None:
+        return reference, dataset
+    raise ValueError(
+        "DataDrift / ConceptDrift tests require a (reference, current) pair. "
+        "Provide either a dataset with .reference/.current attributes, a dict "
+        "with those keys, a 2-tuple, or pass `reference` + `current` via config."
+    )
+
+
+@register_test
+class DataDrift(DatasetTest):
+    """Two-sample data-drift test using the pluggable drift registry."""
+
+    name = "tabular.DataDrift"
+    description = (
+        "Detects distributional drift between a reference and current "
+        "dataset using the configured detector (default: KS). Backed by "
+        "scipy with an optional frouros upgrade via `pip install "
+        "'mrm-core[drift]'`."
+    )
+    tags = ["drift", "ongoing_monitoring"]
+
+    def run(
+        self,
+        dataset: Any = None,
+        column: Any = None,
+        detector: str = "ks",
+        prefer_backend: Any = None,
+        threshold: Any = None,
+        reference: Any = None,
+        current: Any = None,
+        **config,
+    ) -> TestResult:
+        from mrm.drift import get_detector
+
+        ref, cur = _select_drift_dataset(dataset, reference=reference, current=current)
+
+        # Project a single column when the inputs are pandas-shaped.
+        if column is not None:
+            if isinstance(ref, pd.DataFrame):
+                ref = ref[column]
+            if isinstance(cur, pd.DataFrame):
+                cur = cur[column]
+
+        det = get_detector(detector, prefer_backend=prefer_backend)
+        result = det.fit_detect(np.asarray(ref).ravel(), np.asarray(cur).ravel(), threshold=threshold)
+
+        return TestResult(
+            passed=not result.drifted,
+            score=float(1.0 - result.score) if result.kind.value == "data" else float(result.score),
+            details=result.to_dict(),
+            failure_reason=(
+                f"{detector} flagged drift "
+                f"(score={result.score:.4f}"
+                + (f", p={result.p_value:.4f}" if result.p_value is not None else "")
+                + ")"
+            ) if result.drifted else None,
+        )
+
+
+@register_test
+class ConceptDrift(DatasetTest):
+    """Streaming concept-drift detector (Page-Hinkley by default)."""
+
+    name = "tabular.ConceptDrift"
+    description = (
+        "Detects a change in the mean of a streamed residual series "
+        "using Page-Hinkley. Useful for monitoring model error over "
+        "time. Pure-numpy fallback always available; frouros backend "
+        "exposed via `pip install 'mrm-core[drift]'`."
+    )
+    tags = ["drift", "concept_drift", "ongoing_monitoring"]
+
+    def run(
+        self,
+        dataset: Any = None,
+        column: Any = None,
+        detector: str = "page_hinkley",
+        prefer_backend: Any = None,
+        threshold: Any = None,
+        reference: Any = None,
+        current: Any = None,
+        **config,
+    ) -> TestResult:
+        from mrm.drift import get_detector
+
+        ref, cur = _select_drift_dataset(dataset, reference=reference, current=current)
+        if column is not None:
+            if isinstance(ref, pd.DataFrame):
+                ref = ref[column]
+            if isinstance(cur, pd.DataFrame):
+                cur = cur[column]
+
+        det = get_detector(detector, prefer_backend=prefer_backend)
+        result = det.fit_detect(np.asarray(ref).ravel(), np.asarray(cur).ravel(), threshold=threshold)
+
+        return TestResult(
+            passed=not result.drifted,
+            score=float(result.score),
+            details=result.to_dict(),
+            failure_reason=(
+                f"{detector} flagged concept drift (Page-Hinkley={result.score:.2f})"
+            ) if result.drifted else None,
+        )

@@ -6,7 +6,7 @@
 |-------|-------|
 | **AI System Name** | credit_scorecard |
 | **Version** | 1.0.0 |
-| **Documentation Date** | 2026-05-16 05:32 UTC |
+| **Documentation Date** | 2026-05-16 07:03 UTC |
 | **Regulatory Framework** | EU AI Act Annex IV -- Technical Documentation for High-Risk AI Systems |
 | **Provider** | credit_risk_team |
 | **Risk Classification** | High-Risk AI System |

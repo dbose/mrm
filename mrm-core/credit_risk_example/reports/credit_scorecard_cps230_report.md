@@ -4,7 +4,7 @@
 |-------|-------|
 | **Model** | credit_scorecard |
 | **Version** | 1.0.0 |
-| **Report Date** | 2026-05-16 05:32 UTC |
+| **Report Date** | 2026-05-16 07:03 UTC |
 | **Regulatory Framework** | APRA CPS 230 -- Operational Risk Management |
 | **Risk Tier** | tier_1 |
 | **Owner** | credit_risk_team |
@@ -213,6 +213,6 @@ representation of the validation outcomes.
 
 ---
 
-*Report generated: 2026-05-16 05:32 UTC*
+*Report generated: 2026-05-16 07:03 UTC*
 *MRM Framework Version: 0.1.0*
 *Regulatory Framework: APRA CPS 230 -- Operational Risk Management*

@@ -641,30 +641,39 @@ def test_semantic_drift(model, model_config: Dict, config: Dict) -> TestResult:
     
     current_embeddings = embedding_model.encode(current_responses)
     
-    # Compute drift
-    if use_frouros:
-        try:
-            from frouros.detectors.data_drift import MMD
-            
-            # Use Maximum Mean Discrepancy (MMD) test from frouros
-            detector = MMD()
-            detector.fit(baseline_embeddings[:len(current_embeddings)])
-            drift_score, _ = detector.compare(current_embeddings)
-            drift_score = float(drift_score.distance)
-            
-        except ImportError:
-            logger.warning("frouros not available, falling back to simple distance metric")
-            drift_score = _compute_simple_drift(baseline_embeddings, current_embeddings)
-    else:
+    # Route through the drift registry: prefer frouros when installed,
+    # transparently fall back to the pure-numpy MMD detector when not.
+    from mrm.drift import get_detector
+
+    prefer = "frouros" if use_frouros else None
+    try:
+        detector = get_detector("mmd", prefer_backend=prefer)
+    except KeyError:
+        # Final-resort fallback: the legacy simple-distance metric.
         drift_score = _compute_simple_drift(baseline_embeddings, current_embeddings)
-    
+        drift_result = None
+    else:
+        result = detector.fit_detect(
+            baseline_embeddings[:len(current_embeddings)],
+            current_embeddings,
+            threshold=threshold,
+        )
+        drift_score = float(result.score)
+        drift_result = result
+
     passed = drift_score <= threshold
-    
+
     return TestResult(
         test_name="genai.SemanticDrift",
         passed=passed,
         message=f"Semantic drift: {drift_score:.3f} (threshold: {threshold})",
-        details={'drift_score': drift_score, 'samples_compared': len(current_embeddings), 'use_frouros': use_frouros},
+        details={
+            'drift_score': drift_score,
+            'samples_compared': len(current_embeddings),
+            'use_frouros': use_frouros,
+            'detector_backend': drift_result.backend if drift_result else 'legacy_simple_distance',
+            'detector': drift_result.detector if drift_result else None,
+        },
         metrics={'drift_score': drift_score}
     )
 

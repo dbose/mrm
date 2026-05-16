@@ -4,7 +4,7 @@
 |-------|-------|
 | **Model** | credit_scorecard |
 | **Version** | 1.0.0 |
-| **Report Date** | 2026-05-16 05:32 UTC |
+| **Report Date** | 2026-05-16 07:03 UTC |
 | **Regulatory Framework** | Federal Reserve SR 26-2 -- Supervisory Guidance on Model Risk Management for AI Systems |
 | **Standard Version** | 2026 |
 | **Risk Tier** | tier_1 |
