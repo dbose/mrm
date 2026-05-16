@@ -70,13 +70,13 @@ the runner at a backend, and you get back:
 
 | Standard | Jurisdiction | Status | Source |
 |---|---|---|---|
-| **APRA CPS 230** | 🇦🇺 Australia | ✅ Bundled | [`builtin/cps230.py`](mrm-core/mrm/compliance/builtin/cps230.py) |
-| **Federal Reserve SR 11-7** | 🇺🇸 US | ✅ Bundled | [`builtin/sr117.py`](mrm-core/mrm/compliance/builtin/sr117.py) |
-| **EU AI Act Annex IV** | 🇪🇺 EU | ✅ Bundled | [`builtin/eu_ai_act.py`](mrm-core/mrm/compliance/builtin/eu_ai_act.py) |
-| **OSFI E-23** | 🇨🇦 Canada | ✅ Bundled | [`builtin/osfi_e23.py`](mrm-core/mrm/compliance/builtin/osfi_e23.py) |
-| **Cross-standard crosswalk** | 24 concepts × 4 jurisdictions | ✅ Shipped | [`CROSSWALK.md`](mrm-core/docs/CROSSWALK.md) |
-| **Fed SR 26-2** | 🇺🇸 US (supersedes SR 11-7) | 🟡 Roadmap [P8](STRATEGY.md) | — |
-| **NIST AI RMF, ECB Internal Models** | crosswalk targets | 🟡 Roadmap | — |
+| **APRA CPS 230** | Australia | Bundled | [`builtin/cps230.py`](mrm-core/mrm/compliance/builtin/cps230.py) |
+| **Federal Reserve SR 11-7** | US | Bundled | [`builtin/sr117.py`](mrm-core/mrm/compliance/builtin/sr117.py) |
+| **EU AI Act Annex IV** | EU | Bundled | [`builtin/eu_ai_act.py`](mrm-core/mrm/compliance/builtin/eu_ai_act.py) |
+| **OSFI E-23** | Canada | Bundled | [`builtin/osfi_e23.py`](mrm-core/mrm/compliance/builtin/osfi_e23.py) |
+| **Cross-standard crosswalk** | 24 concepts × 4 jurisdictions | Shipped | [`CROSSWALK.md`](mrm-core/docs/CROSSWALK.md) |
+| **Fed SR 26-2** | US (supersedes SR 11-7) | Roadmap [P8](STRATEGY.md) | — |
+| **NIST AI RMF, ECB Internal Models** | crosswalk targets | Roadmap | — |
 
 Plugins are discovered three ways — bundled, pip-installed via the
 `mrm.compliance` entry-point group, or local paths declared in
@@ -100,13 +100,13 @@ Test packs are pluggable via `@register_test`. The roadmap adds a
 
 | Source | Adapter | Replay-aware |
 |---|---|---|
-| Local pickle / joblib | `_load_pickle` | ✅ via `instrument_predictor` |
-| Python class | `_load_python_class` | ✅ |
-| MLflow registry | `_load_mlflow_model` | ✅ |
-| HuggingFace Hub | `_load_huggingface_model` | ✅ |
-| S3 / GCS / Azure URIs | `_load_s3_model` | ✅ |
-| Databricks Unity Catalog | UC backend | ✅ |
-| **LLM endpoints** | LiteLLM + legacy adapters | ✅ prompt + retrieval + decoding params auto-captured |
+| Local pickle / joblib | `_load_pickle` | Yes via `instrument_predictor` |
+| Python class | `_load_python_class` | Yes  |
+| MLflow registry | `_load_mlflow_model` | Yes  |
+| HuggingFace Hub | `_load_huggingface_model` | Yes  |
+| S3 / GCS / Azure URIs | `_load_s3_model` | Yes  |
+| Databricks Unity Catalog | UC backend | Yes  |
+| **LLM endpoints** | LiteLLM + legacy adapters | Yes prompt + retrieval + decoding params auto-captured |
 
 ### Replay primitive
 
@@ -131,16 +131,16 @@ flowchart TB
 
 | Capability | OSS | Cloud *(roadmap)* |
 |---|---|---|
-| Hash-chained `DecisionRecord` | ✅ | ✅ |
-| `@capture` decorator + `CaptureContext` | ✅ | ✅ |
-| Auto-capture inside `TestRunner` for **every** model archetype | ✅ | ✅ |
-| Local JSONL backend | ✅ | — |
-| S3 + Object Lock backend | ✅ | ✅ managed |
-| OTLP/HTTP-JSON export | ✅ | ✅ |
-| `mrm replay record / reconstruct / verify / sample / verify-chain` | ✅ | ✅ |
-| HSM-backed signing (FIPS 140-2 L3+) | — | ✅ ([P9](STRATEGY.md)) |
-| Regulator-portal sample export | — | ✅ |
-| 7-year retention SLA | — | ✅ |
+| Hash-chained `DecisionRecord` | Yes  | Yes |
+| `@capture` decorator + `CaptureContext` | Yes  | Yes |
+| Auto-capture inside `TestRunner` for **every** model archetype | Yes  | Yes |
+| Local JSONL backend | Yes  | — |
+| S3 + Object Lock backend | Yes  | Yes managed |
+| OTLP/HTTP-JSON export | Yes  | Yes |
+| `mrm replay record / reconstruct / verify / sample / verify-chain` | Yes  | Yes |
+| HSM-backed signing (FIPS 140-2 L3+) | — | Yes ([P9](STRATEGY.md)) |
+| Regulator-portal sample export | — | Yes  |
+| 7-year retention SLA | — | Yes  |
 
 Reference specs: [Decision Record v1](mrm-core/docs/spec/replay-record-v1.md).
 ADR: [Replay as first-class](mrm-core/docs/adr/0003-replay-as-first-class-primitive.md).
@@ -149,12 +149,12 @@ ADR: [Replay as first-class](mrm-core/docs/adr/0003-replay-as-first-class-primit
 
 | Capability | OSS | Cloud *(roadmap)* |
 |---|---|---|
-| Hash-chained `EvidencePacket` | ✅ | ✅ |
-| Local + S3 Object Lock backends | ✅ | ✅ managed |
-| GPG / age signatures | ✅ | — |
-| Daily Merkle root publication | 🟡 [P9](STRATEGY.md) | ✅ |
-| HSM-backed root signing | — | ✅ |
-| Conformance test-vector suite | 🟡 [P9](STRATEGY.md) | — |
+| Hash-chained `EvidencePacket` | Yes  | Yes |
+| Local + S3 Object Lock backends | Yes  | Yes managed |
+| GPG / age signatures | Yes  | — |
+| Daily Merkle root publication | Planned [P9](STRATEGY.md) | Yes  |
+| HSM-backed root signing | — | Yes  |
+| Conformance test-vector suite | Planned [P9](STRATEGY.md) | — |
 
 Spec: [Evidence Vault v1](mrm-core/docs/spec/evidence-vault-v1.md).
 ADR: [Content-addressed hash chains](mrm-core/docs/adr/0002-evidence-vault-hash-chain.md).
@@ -413,18 +413,18 @@ mrm-core/
 
 **Done (shipped):**
 
-- ✅ CLI with dbt-style ergonomics
-- ✅ DAG, `ref()`, graph operators, topological sort, parallel execution
-- ✅ Built-in tests across 4 namespaces (tabular · ccr · model · genai)
-- ✅ Four bundled jurisdictions (AU / US / EU / CA)
-- ✅ Cross-standard crosswalk (24 concepts × 4 jurisdictions)
-- ✅ Validation trigger engine (6 trigger types)
-- ✅ Databricks UC + MLflow + HuggingFace integration
-- ✅ Evidence vault — hash-chained packets, S3 Object Lock backend
-- ✅ GenAI test pack — 14 tests, LiteLLM unified interface, RAG validation
-- ✅ **1:1 Decision Replay — DecisionRecord, capture, OTLP, verify, backends, CLI**
-- ✅ Replay capture for **all** model types — sklearn, HF, MLflow, LiteLLM, legacy LLM adapters
-- ✅ ADRs + spec PRDs + GOVERNANCE.md posture
+- CLI with dbt-style ergonomics
+- DAG, `ref()`, graph operators, topological sort, parallel execution
+- Built-in tests across 4 namespaces (tabular · ccr · model · genai)
+- Four bundled jurisdictions (AU / US / EU / CA)
+- Cross-standard crosswalk (24 concepts × 4 jurisdictions)
+- Validation trigger engine (6 trigger types)
+- Databricks UC + MLflow + HuggingFace integration
+- Evidence vault — hash-chained packets, S3 Object Lock backend
+- GenAI test pack — 14 tests, LiteLLM unified interface, RAG validation
+- **1:1 Decision Replay — DecisionRecord, capture, OTLP, verify, backends, CLI**
+- Replay capture for **all** model types — sklearn, HF, MLflow, LiteLLM, legacy LLM adapters
+- ADRs + spec PRDs + GOVERNANCE.md posture
 
 **Next:** SR 26-2 plugin, cryptographic vault hardening (Merkle roots,
 HSM signing), 50+-template adversarial pack, GRC connectors.
