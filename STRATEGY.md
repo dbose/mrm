@@ -167,7 +167,8 @@ than replacing it. Three layers to keep distinct:
 - ✅ Federal Reserve SR 11-7 bundled standard with section-level evidence mapping
 - ✅ EU AI Act Annex IV bundled standard with 9 technical documentation requirements
 - ✅ OSFI E-23 bundled standard for Canadian FRFIs with 7-section framework
-- ✅ Cross-standard crosswalk mapping 24 concepts across 4 jurisdictions (AU/US/EU/CA)
+- ✅ Federal Reserve SR 26-2 bundled standard (supersedes SR 11-7/SR 21-8) with AI-activity-logging clauses anchored to P7 DecisionRecord and tamper-evident clauses anchored to P5 EvidencePacket
+- ✅ Cross-standard crosswalk mapping 27 concepts across 5 standards (AU/US-SR11-7/US-SR26-2/EU/CA) including explicit SR 11-7 → SR 26-2 transition map
 - ✅ Evidence vault with hash-chained packets, local + S3 Object Lock backends, SEC 17a-4 compliance
 - ✅ GenAI / LLM testing depth: 14 tests across 7 categories (hallucination, bias, robustness, safety, drift, PII, operational)
 - ✅ LLM endpoint adapters: **LiteLLM** unified interface to 100+ providers (OpenAI, Anthropic, Bedrock, Azure, Cohere, etc.) + legacy adapters for backward compatibility
@@ -471,7 +472,7 @@ mrm replay sample --model ccr_monte_carlo --since 2026-01-01 --n 50
 
 ### P8. Fed SR 26-2 bundled compliance standard
 
-- **STATUS:** next (parallel-safe with P7)
+- **STATUS:** done
 - **WEDGE:** SR 26-2 supersedes SR 11-7 and SR 21-8 for US banks >$30B
   assets. Without it, the SR 11-7 plugin reads as outdated to Tier-1
   US buyers in 2026-2027. SR 26-2 explicitly mandates AI activity

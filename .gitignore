@@ -18,3 +18,4 @@ venv/
 *.parquet
 *.db
 CLAUDE.md
+.claude/

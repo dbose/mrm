@@ -397,6 +397,139 @@ crosswalk:
         - "Section 3.1"
     notes: "CPS 230 Para 38-42 explicitly addresses risk mitigation and controls. Other standards embed this in governance/framework requirements. EU AI Act Annex IV.4 requires risk management system description."
 
+  # =====================================================================
+  # Theme 25: AI Activity Logging (Decision Records) -- NEW
+  # =====================================================================
+  - concept: "AI Activity Logging (Per-Decision Records)"
+    description: "Capture of a tamper-evident record for every AI/GenAI inference (input state, model identity, inference params, raw output)"
+    mappings:
+      cps230:
+        - "Para 41"
+      sr117: []
+      sr26_2:
+        - "Section II.AI.A"
+        - "Section II.AI.B"
+        - "Section IV.AI.C"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.2"
+    notes: "SR 26-2 introduces an explicit AI activity-logging mandate not present in SR 11-7. CPS 230 Para 41 covers operational risk event logging; EU AI Act Annex IV.8 requires logging capabilities for high-risk systems. mrm-core anchors this to the DecisionRecord primitive (docs/spec/replay-record-v1.md)."
+
+  # =====================================================================
+  # Theme 26: Tamper-Evident Evidence Chain -- NEW
+  # =====================================================================
+  - concept: "Tamper-Evident Evidence Chain-of-Custody"
+    description: "Cryptographic chain-of-custody (hash chain / Merkle aggregation) for validation evidence; integrity verifiable on demand"
+    mappings:
+      cps230:
+        - "Para 41"
+      sr117: []
+      sr26_2:
+        - "Section III.AI.A"
+        - "Section III.AI.B"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.2"
+    notes: "SR 26-2 makes the 'tamper-evident, integrity-protected, immutable, complete' evidence expectation explicit. SR 11-7 implies it via Section IV inventory but does not specify cryptographic chain-of-custody. mrm-core anchors this to the hash-chained EvidencePacket (docs/spec/evidence-vault-v1.md)."
+
+  # =====================================================================
+  # Theme 27: Third-Party / Vendor AI Governance -- NEW
+  # =====================================================================
+  - concept: "Third-Party / Vendor AI Model Governance"
+    description: "Governance expectations for foundation models, managed LLM endpoints, and other vendor-provided AI components"
+    mappings:
+      cps230:
+        - "Para 43"
+      sr117:
+        - "Section III.E"
+      sr26_2:
+        - "Section V.A"
+        - "Section V.B"
+      euaiact:
+        - "Annex IV.1"
+        - "Annex IV.4"
+      osfie23:
+        - "Section 6.1"
+    notes: "SR 11-7 Section III.E addresses vendor models generically. SR 26-2 Section V is the dedicated AI-specific extension covering foundation models and managed LLM endpoints. CPS 230 Para 43 covers third-party service-provider risk; OSFI E-23 Section 6.1 addresses third-party model components."
+
+# =====================================================================
+# SR 11-7 -> SR 26-2 transition map
+# =====================================================================
+# This section is for institutions transitioning from SR 11-7 to SR 26-2.
+# It identifies (a) sections that carry over with renumbering, and (b)
+# AI-specific sections in SR 26-2 with no SR 11-7 antecedent.
+sr_11_7_to_sr_26_2_transition:
+  carried_over_sections:
+    - sr117: "Section I.A"
+      sr26_2: "Section I.A"
+      note: "Sound theory / design -- unchanged in substance, AI-specific wording added"
+    - sr117: "Section I.B"
+      sr26_2: "Section I.B"
+      note: "Use & intended purpose -- AI in-scope / out-of-scope use cases added"
+    - sr117: "Section I.C"
+      sr26_2: "Section I.C"
+      note: "Data quality -- retrieval-corpus lineage explicitly included"
+    - sr117: "Section II.A"
+      sr26_2: "Section II.A"
+      note: "Conceptual soundness -- unchanged"
+    - sr117: "Section II.B"
+      sr26_2: "Section II.B"
+      note: "Ongoing monitoring -- AI drift / consistency triggers added"
+    - sr117: "Section II.C"
+      sr26_2: "Section II.C"
+      note: "Outcomes analysis -- unchanged"
+    - sr117: "Section II.D"
+      sr26_2: "Section II.D"
+      note: "Sensitivity / stress -- unchanged"
+    - sr117: "Section III.A"
+      sr26_2: "Section III.A"
+      note: "Policies & controls -- AI-specific provisions required"
+    - sr117: "Section III.B"
+      sr26_2: "Section III.B"
+      note: "Roles & independence -- unchanged"
+    - sr117: "Section III.D"
+      sr26_2: "Section III.C"
+      note: "Risk-tier-commensurate cadence -- renumbered (D -> C)"
+    - sr117: "Section III.E"
+      sr26_2: "Section V.A"
+      note: "Vendor governance -- promoted to dedicated Section V for AI"
+    - sr117: "Section IV"
+      sr26_2: "Section IV.A"
+      note: "Inventory -- preserved; AI inventory adds IV.AI.C linkage"
+  new_in_sr_26_2:
+    - section: "Section II.AI.A"
+      title: "AI Activity Logging"
+      mrm_core_anchor: "DecisionRecord (replay/record.py)"
+    - section: "Section II.AI.B"
+      title: "Decision Reconstruction (Replay)"
+      mrm_core_anchor: "mrm replay verify / reconstruct"
+    - section: "Section II.AI.C"
+      title: "AI-Specific Risk Testing"
+      mrm_core_anchor: "genai.* test pack"
+    - section: "Section II.AI.D"
+      title: "RAG Context Integrity"
+      mrm_core_anchor: "DecisionRecord.retrieved_context"
+    - section: "Section III.AI.A"
+      title: "Tamper-Evident Audit Trail"
+      mrm_core_anchor: "EvidencePacket hash chain (evidence/packet.py)"
+    - section: "Section III.AI.B"
+      title: "Chain-of-Custody for Evidence"
+      mrm_core_anchor: "EvidencePacket.prior_packet_hash linkage"
+    - section: "Section III.AI.C"
+      title: "AI Materiality Classification"
+      mrm_core_anchor: "model_config.ai_materiality"
+    - section: "Section IV.AI.C"
+      title: "Per-Decision Audit Trail Linkage"
+      mrm_core_anchor: "ReplayBackend per-model store"
+    - section: "Section V.A"
+      title: "Third-Party / Vendor AI Model Governance"
+      mrm_core_anchor: "model_config.third_party_assessment"
+    - section: "Section V.B"
+      title: "Vendor-Provided Evidence"
+      mrm_core_anchor: "EvidencePacket.metadata.vendor_attestation"
+
 # =====================================================================
 # Metadata
 # =====================================================================
@@ -413,6 +546,10 @@ metadata:
       jurisdiction: "US"
       version: "2011"
       full_name: "Federal Reserve SR 11-7 Supervisory Guidance on Model Risk Management"
+    - name: "SR 26-2"
+      jurisdiction: "US"
+      version: "2026"
+      full_name: "Federal Reserve SR 26-2 Supervisory Guidance on Model Risk Management for AI Systems"
     - name: "EU AI Act Annex IV"
       jurisdiction: "EU"
       version: "2024"
@@ -421,7 +558,7 @@ metadata:
       jurisdiction: "CA"
       version: "2023"
       full_name: "OSFI Guideline E-23 Enterprise-Wide Model Risk Management"
-  concepts_mapped: 24
+  concepts_mapped: 27
   notes: |
     This crosswalk identifies conceptual equivalence across four major model
     risk management regulatory frameworks. Mappings reflect substantive

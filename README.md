@@ -74,8 +74,8 @@ the runner at a backend, and you get back:
 | **Federal Reserve SR 11-7** | US | Bundled | [`builtin/sr117.py`](mrm-core/mrm/compliance/builtin/sr117.py) |
 | **EU AI Act Annex IV** | EU | Bundled | [`builtin/eu_ai_act.py`](mrm-core/mrm/compliance/builtin/eu_ai_act.py) |
 | **OSFI E-23** | Canada | Bundled | [`builtin/osfi_e23.py`](mrm-core/mrm/compliance/builtin/osfi_e23.py) |
-| **Cross-standard crosswalk** | 24 concepts × 4 jurisdictions | Shipped | [`CROSSWALK.md`](mrm-core/docs/CROSSWALK.md) |
-| **Fed SR 26-2** | US (supersedes SR 11-7) | Roadmap [P8](STRATEGY.md) | — |
+| **Federal Reserve SR 26-2** | US (supersedes SR 11-7 for banks >$30B) | Bundled | [`builtin/sr26_2.py`](mrm-core/mrm/compliance/builtin/sr26_2.py) |
+| **Cross-standard crosswalk** | 27 concepts × 5 standards (incl. SR 11-7 → SR 26-2 transition) | Shipped | [`CROSSWALK.md`](mrm-core/docs/CROSSWALK.md) |
 | **NIST AI RMF, ECB Internal Models** | crosswalk targets | Roadmap | — |
 
 Plugins are discovered three ways — bundled, pip-installed via the
@@ -416,8 +416,8 @@ mrm-core/
 - CLI with dbt-style ergonomics
 - DAG, `ref()`, graph operators, topological sort, parallel execution
 - Built-in tests across 4 namespaces (tabular · ccr · model · genai)
-- Four bundled jurisdictions (AU / US / EU / CA)
-- Cross-standard crosswalk (24 concepts × 4 jurisdictions)
+- Four bundled jurisdictions (AU / US / EU / CA), plus **Fed SR 26-2** (AI-specific successor to SR 11-7)
+- Cross-standard crosswalk (27 concepts × 5 standards, with explicit SR 11-7 → SR 26-2 transition map)
 - Validation trigger engine (6 trigger types)
 - Databricks UC + MLflow + HuggingFace integration
 - Evidence vault — hash-chained packets, S3 Object Lock backend

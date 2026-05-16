@@ -84,6 +84,7 @@ class ComplianceRegistry:
         builtin_modules = [
             "mrm.compliance.builtin.cps230",
             "mrm.compliance.builtin.sr117",
+            "mrm.compliance.builtin.sr26_2",
             "mrm.compliance.builtin.eu_ai_act",
             "mrm.compliance.builtin.osfi_e23",
         ]
