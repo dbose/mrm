@@ -1232,11 +1232,11 @@ app.add_typer(evidence_app, name="evidence")
 @evidence_app.command("freeze")
 def evidence_freeze(
     model: str = typer.Argument(..., help="Model name to create evidence for"),
-    backend: str = typer.Option("local", "--backend", "-b", help="Backend: local or s3"),
-    bucket: str = typer.Option(None, "--bucket", help="S3 bucket name (for S3 backend)"),
-    retention: int = typer.Option(2555, "--retention", "-r", help="Retention period in days"),
-    created_by: str = typer.Option(None, "--created-by", help="User identifier (email)"),
-    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_evidence type (local | s3)"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="Override S3 bucket"),
+    retention: Optional[int] = typer.Option(None, "--retention", "-r", help="Override retention period (days)"),
+    created_by: Optional[str] = typer.Option(None, "--created-by", help="User identifier (email)"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Active target (profiles.yml outputs.<target>)"),
 ):
     """Freeze validation results as immutable evidence packet
     
@@ -1330,31 +1330,19 @@ def evidence_freeze(
         if not created_by:
             created_by = os.environ.get('USER', getpass.getuser())
         
-        # Initialize backend
-        if backend == 'local':
-            evidence_dir = project.root_path / "evidence"
-            backend_impl = LocalFilesystemBackend(evidence_dir)
-            
-        elif backend == 's3':
-            if not bucket:
-                console.print("--bucket required for S3 backend", style="red")
-                raise typer.Exit(1)
-            
-            try:
-                from mrm.evidence.backends.s3_object_lock import S3ObjectLockBackend
-            except ImportError:
-                console.print(
-                    "S3 backend requires boto3: pip install boto3",
-                    style="red"
-                )
-                raise typer.Exit(1)
-            
-            backend_impl = S3ObjectLockBackend(bucket=bucket)
-        
-        else:
-            console.print(f"Unknown backend: {backend}", style="red")
-            raise typer.Exit(1)
-        
+        # Resolve backend via project+profile+env+CLI override chain.
+        backend_impl, resolved_type, resolved_cfg = _build_evidence_backend(
+            project,
+            backend_flag=backend,
+            bucket_flag=bucket,
+            retention_flag=retention,
+        )
+        console.print(
+            f"[dim]Resolved default_evidence: type={resolved_type}"
+            + (f", bucket={resolved_cfg.get('bucket')}" if resolved_cfg.get('bucket') else "")
+            + "[/dim]"
+        )
+
         # Get prior packet (for hash chain)
         prior_packet = backend_impl.get_latest_packet(model_name)
         
@@ -1492,49 +1480,28 @@ def evidence_verify(
 
 @evidence_app.command("list")
 def evidence_list(
-    model: str = typer.Option(None, "--model", "-m", help="Filter by model name"),
-    backend: str = typer.Option("local", "--backend", "-b", help="Backend: local or s3"),
-    bucket: str = typer.Option(None, "--bucket", help="S3 bucket name (for S3 backend)"),
-    profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter by model name"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_evidence type"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="Override S3 bucket"),
+    profile: str = typer.Option("dev", "--profile", "-p", help="Active target"),
 ):
     """List evidence packets
-    
+
     Examples:
-    
+
         mrm evidence list --model ccr_monte_carlo
-        
+
         mrm evidence list --backend s3 --bucket my-evidence
     """
     try:
-        from pathlib import Path as PathLib
-        from mrm.evidence.backends.local import LocalFilesystemBackend
-        
-        # Initialize backend
-        if backend == 'local':
-            project = Project.load(profile=profile)
-            evidence_dir = project.root_path / "evidence"
-            backend_impl = LocalFilesystemBackend(evidence_dir, warn_on_use=False)
-            
-        elif backend == 's3':
-            if not bucket:
-                console.print("--bucket required for S3 backend", style="red")
-                raise typer.Exit(1)
-            
-            try:
-                from mrm.evidence.backends.s3_object_lock import S3ObjectLockBackend
-            except ImportError:
-                console.print(
-                    "S3 backend requires boto3: pip install boto3",
-                    style="red"
-                )
-                raise typer.Exit(1)
-            
-            backend_impl = S3ObjectLockBackend(bucket=bucket)
-        
-        else:
-            console.print(f"Unknown backend: {backend}", style="red")
-            raise typer.Exit(1)
-        
+        project = Project.load(profile=profile)
+        backend_impl, resolved_type, resolved_cfg = _build_evidence_backend(
+            project,
+            backend_flag=backend,
+            bucket_flag=bucket,
+            retention_flag=None,
+        )
+
         # List packets
         packets = backend_impl.list_packets(model_name=model)
         
@@ -1573,6 +1540,241 @@ def evidence_list(
 
 
 # ---------------------------------------------------------------------------
+# `mrm evidence root` + `mrm evidence conformance`  -- Cryptographic
+# hardening (P9). Daily Merkle aggregation + signer abstraction.
+# ---------------------------------------------------------------------------
+
+root_app = typer.Typer(help="Daily Merkle root publication + verification")
+evidence_app.add_typer(root_app, name="root")
+
+conformance_app = typer.Typer(help="Run the evidence-vault conformance suite")
+evidence_app.add_typer(conformance_app, name="conformance")
+
+
+def _build_evidence_backend(project, *, backend_flag, bucket_flag, retention_flag):
+    """Resolve and build an EvidenceBackend via the project resolver.
+
+    CLI flags act as the top precedence layer; omitted flags fall
+    through to ``profiles.yml`` -> ``mrm_project.yml`` defaults.
+    """
+    from pathlib import Path as PathLib
+
+    overrides: Dict[str, Any] = {}
+    if backend_flag is not None:
+        overrides["type"] = backend_flag
+    if bucket_flag is not None:
+        overrides["bucket"] = bucket_flag
+    if retention_flag is not None:
+        overrides["retention_days"] = retention_flag
+
+    cfg = project.resolve_backend("default_evidence", cli_overrides=overrides)
+    btype = cfg.get("type") or "local"
+
+    if btype == "local":
+        from mrm.evidence.backends.local import LocalFilesystemBackend
+        evidence_dir = PathLib(cfg.get("path") or (project.root_path / "evidence"))
+        return LocalFilesystemBackend(evidence_dir), btype, cfg
+
+    if btype in ("s3", "s3_object_lock"):
+        bucket = cfg.get("bucket")
+        if not bucket:
+            console.print(
+                "default_evidence resolution missing 'bucket'. Set it via "
+                "--bucket, profiles.yml outputs.<target>.backends.default_evidence.bucket, "
+                "or mrm_project.yml backends.default_evidence.bucket.",
+                style="red",
+            )
+            raise typer.Exit(1)
+        try:
+            from mrm.evidence.backends.s3_object_lock import S3ObjectLockBackend
+        except ImportError:
+            console.print("S3 backend requires boto3: pip install boto3", style="red")
+            raise typer.Exit(1)
+        return S3ObjectLockBackend(bucket=bucket), btype, cfg
+
+    console.print(f"Unknown default_evidence type: {btype}", style="red")
+    raise typer.Exit(1)
+
+
+def _resolve_signer(signer_name: str, key_path: Optional[str]) -> "object":
+    """Build a Signer from CLI flags. Returns a Signer or raises Exit."""
+    from mrm.evidence.sign import build_signer
+
+    cfg: Dict[str, Any] = {"name": signer_name}
+    if signer_name == "local":
+        if not key_path:
+            console.print("--key-path required for local signer", style="red")
+            raise typer.Exit(1)
+        cfg["key_path"] = key_path
+    elif signer_name == "cloud-hsm":
+        console.print(
+            "cloud-hsm is a paid-tier feature (see STRATEGY.md P15). "
+            "OSS signers: local, gpg, age, kms.",
+            style="yellow",
+        )
+        raise typer.Exit(2)
+    try:
+        return build_signer(cfg)
+    except (ImportError, NotImplementedError) as exc:
+        console.print(f"Signer unavailable: {exc}", style="red")
+        raise typer.Exit(1)
+
+
+@root_app.command("publish")
+def evidence_root_publish(
+    epoch: str = typer.Option(..., "--date", "-d", help="UTC date (YYYY-MM-DD)"),
+    chain_dir: str = typer.Option("evidence/chain", "--chain-dir", help="HMAC-chain directory"),
+    roots_dir: str = typer.Option("evidence/roots", "--roots-dir", help="Where to write signed roots"),
+    signer: str = typer.Option("local", "--signer", help="local | gpg | age | kms | cloud-hsm"),
+    key_path: Optional[str] = typer.Option(None, "--key-path", help="Local-signer key file"),
+    chain_secret_hex: Optional[str] = typer.Option(
+        None, "--chain-secret", help="Hex chain secret (overrides chain.secret on disk)"
+    ),
+):
+    """Aggregate one UTC day's chained events into a signed Merkle root.
+
+    Production architecture:
+
+    * Fast path  -- HMAC-chained events accumulate during the day.
+    * Lockdown   -- this command runs at midnight UTC, builds the
+                    Merkle tree, calls the configured Signer (KMS or
+                    HSM in production), and writes ``{epoch}.root.json``.
+    """
+    try:
+        from mrm.evidence.merkle import aggregate_epoch, write_root
+
+        from pathlib import Path as PathLib
+
+        signer_obj = _resolve_signer(signer, key_path)
+        secret = bytes.fromhex(chain_secret_hex) if chain_secret_hex else None
+        root = aggregate_epoch(PathLib(chain_dir), epoch=epoch, chain_secret=secret)
+        signed = signer_obj.sign(root)
+        target = write_root(PathLib(roots_dir), signed)
+        console.print(f"Published [bold]{target}[/bold]")
+        console.print(f"  epoch:        {signed.epoch}")
+        console.print(f"  leaf_count:   {signed.leaf_count}")
+        console.print(f"  root_hash:    {signed.root_hash}")
+        console.print(f"  signer:       {signed.signer}")
+        console.print(f"  signature:    {(signed.signature or '')[:40]}...")
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        console.print(f" Error publishing root: {exc}", style="red")
+        import traceback; traceback.print_exc()
+        raise typer.Exit(1)
+
+
+@root_app.command("verify")
+def evidence_root_verify(
+    epoch: str = typer.Option(..., "--date", "-d", help="UTC date (YYYY-MM-DD)"),
+    chain_dir: str = typer.Option("evidence/chain", "--chain-dir", help="HMAC-chain directory"),
+    roots_dir: str = typer.Option("evidence/roots", "--roots-dir", help="Where signed roots live"),
+    signer: str = typer.Option("local", "--signer", help="local | gpg | age | kms"),
+    key_path: Optional[str] = typer.Option(None, "--key-path", help="Local-signer key file"),
+    chain_secret_hex: Optional[str] = typer.Option(
+        None, "--chain-secret", help="Hex chain secret (overrides chain.secret on disk)"
+    ),
+):
+    """Verify a published root: signature + re-derived Merkle hash."""
+    try:
+        from pathlib import Path as PathLib
+
+        from mrm.evidence.merkle import read_root, reproduce_root_from_chain
+
+        signer_obj = _resolve_signer(signer, key_path)
+        root = read_root(PathLib(roots_dir), epoch)
+
+        # 1. Signature
+        sig_ok = signer_obj.verify(root)
+        # 2. Independently re-derive the Merkle root from the events.
+        secret = bytes.fromhex(chain_secret_hex) if chain_secret_hex else None
+        rederived = reproduce_root_from_chain(
+            PathLib(chain_dir), epoch, chain_secret=secret
+        )
+        match = rederived == root.root_hash
+
+        if sig_ok and match:
+            console.print(f"[green]Root OK[/green] for {epoch}")
+            console.print(f"  signature:  verified ({root.signer})")
+            console.print(f"  rederived:  matches published root")
+        else:
+            console.print(f"[red]Root FAIL[/red] for {epoch}", style="red")
+            console.print(f"  signature ok: {sig_ok}")
+            console.print(f"  rederive ok:  {match}")
+            raise typer.Exit(2)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        console.print(f" Error verifying root: {exc}", style="red")
+        raise typer.Exit(1)
+
+
+@root_app.command("show")
+def evidence_root_show(
+    epoch: str = typer.Option(..., "--date", "-d", help="UTC date (YYYY-MM-DD)"),
+    roots_dir: str = typer.Option("evidence/roots", "--roots-dir", help="Where signed roots live"),
+):
+    """Print a published Merkle root."""
+    try:
+        from pathlib import Path as PathLib
+        from mrm.evidence.merkle import read_root
+
+        root = read_root(PathLib(roots_dir), epoch)
+        console.print_json(root.to_json(indent=2))
+    except Exception as exc:
+        console.print(f" Error reading root: {exc}", style="red")
+        raise typer.Exit(1)
+
+
+@root_app.command("list-signers")
+def evidence_root_list_signers():
+    """List signer names + which require an HSM (paid-tier marker)."""
+    from mrm.evidence.sign import list_signers
+
+    table = Table(title="Evidence signers")
+    table.add_column("Name", style="cyan")
+    table.add_column("Requires HSM?")
+    table.add_column("Tier")
+    for name, meta in list_signers().items():
+        tier = "paid (<brand> Cloud)" if meta["requires_hsm"] else "OSS"
+        table.add_row(name, "yes" if meta["requires_hsm"] else "no", tier)
+    console.print(table)
+
+
+@conformance_app.command("run")
+def evidence_conformance_run(
+    vectors_dir: Optional[str] = typer.Option(
+        None,
+        "--vectors-dir",
+        help="Override default test-vectors path (docs/spec/test-vectors/evidence)",
+    ),
+):
+    """Run the evidence-vault conformance test corpus.
+
+    Implementations claiming conformance with the v1 spec must accept
+    every positive vector and reject every negative vector.
+    """
+    try:
+        from mrm.evidence import _conformance
+
+        results = _conformance.run_all(vectors_dir)
+        for v in results["details"]:
+            mark = "ok" if v["passed"] else "FAIL"
+            console.print(f"  [{mark}] {v['name']} -- {v['summary']}")
+        console.print(
+            f"\n{results['passed']}/{results['total']} passed; "
+            f"{results['failed']} failed."
+        )
+        if results["failed"]:
+            raise typer.Exit(2)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        console.print(f" Error running conformance: {exc}", style="red")
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
 # `mrm replay` — 1:1 Decision Replay (P7)
 # ---------------------------------------------------------------------------
 
@@ -1580,31 +1782,59 @@ replay_app = typer.Typer(help="Capture, reconstruct, and verify model decisions"
 app.add_typer(replay_app, name="replay")
 
 
-def _load_replay_backend(profile: str, backend: str, bucket: Optional[str] = None):
-    """Resolve a replay backend by name."""
+def _load_replay_backend(profile: str, backend: Optional[str], bucket: Optional[str] = None):
+    """Resolve a replay backend via the project resolver.
+
+    CLI flags (``backend``, ``bucket``) act as the highest precedence
+    layer when non-None. Omitted flags fall through to
+    ``profiles.yml`` -> ``mrm_project.yml`` defaults for the
+    ``default_replay`` role.
+    """
     from pathlib import Path as PathLib
 
-    if backend == "local":
-        try:
-            project = Project.load(profile=profile)
-            replay_dir = project.root_path / "replay"
-        except Exception:
-            replay_dir = PathLib.cwd() / "replay"
+    try:
+        project = Project.load(profile=profile)
+    except Exception:
+        project = None
+
+    overrides: Dict[str, Any] = {}
+    if backend is not None:
+        overrides["type"] = backend
+    if bucket is not None:
+        overrides["bucket"] = bucket
+
+    if project is not None:
+        cfg = project.resolve_backend("default_replay", cli_overrides=overrides)
+        default_dir = project.root_path / "replay"
+    else:
+        cfg = overrides
+        default_dir = PathLib.cwd() / "replay"
+
+    btype = cfg.get("type") or "local"
+
+    if btype == "local":
         from mrm.replay.backends.local import LocalReplayBackend
+        replay_dir = PathLib(cfg.get("path") or default_dir)
         return LocalReplayBackend(replay_dir, warn_on_use=False)
 
-    if backend == "s3":
-        if not bucket:
-            console.print("--bucket required for S3 backend", style="red")
+    if btype == "s3":
+        b = cfg.get("bucket")
+        if not b:
+            console.print(
+                "default_replay resolution missing 'bucket'. Set it via --bucket, "
+                "profiles.yml outputs.<target>.backends.default_replay.bucket, "
+                "or mrm_project.yml backends.default_replay.bucket.",
+                style="red",
+            )
             raise typer.Exit(1)
         try:
             from mrm.replay.backends.s3 import S3ReplayBackend
         except ImportError:
             console.print("S3 replay backend requires boto3: pip install boto3", style="red")
             raise typer.Exit(1)
-        return S3ReplayBackend(bucket=bucket)
+        return S3ReplayBackend(bucket=b)
 
-    console.print(f"Unknown replay backend: {backend}", style="red")
+    console.print(f"Unknown replay backend: {btype}", style="red")
     raise typer.Exit(1)
 
 
@@ -1612,7 +1842,7 @@ def _load_replay_backend(profile: str, backend: str, bucket: Optional[str] = Non
 def replay_record(
     model: str = typer.Argument(..., help="Model name to record a decision for"),
     inputs: str = typer.Option(..., "--inputs", "-i", help="Path to a CSV/JSON input file"),
-    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_replay type"),
     bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
     profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
 ):
@@ -1709,7 +1939,7 @@ def replay_record(
 @replay_app.command("reconstruct")
 def replay_reconstruct(
     record_id: str = typer.Argument(..., help="DecisionRecord ID"),
-    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_replay type"),
     bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
     profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
 ):
@@ -1732,7 +1962,7 @@ def replay_reconstruct(
 def replay_verify(
     record_id: str = typer.Argument(..., help="DecisionRecord ID"),
     tolerance: float = typer.Option(1e-9, "--tolerance", help="Numeric replay tolerance"),
-    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_replay type"),
     bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
     profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
 ):
@@ -1796,7 +2026,7 @@ def replay_sample(
     since: Optional[str] = typer.Option(None, "--since", help="ISO-8601 lower bound"),
     until: Optional[str] = typer.Option(None, "--until", help="ISO-8601 upper bound"),
     n: int = typer.Option(10, "--n", help="Max records to return"),
-    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_replay type"),
     bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
     profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
 ):
@@ -1827,7 +2057,7 @@ def replay_sample(
 @replay_app.command("verify-chain")
 def replay_verify_chain(
     model: str = typer.Argument(..., help="Model name to verify"),
-    backend: str = typer.Option("local", "--backend", "-b", help="local or s3"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Override default_replay type"),
     bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket (for s3 backend)"),
     profile: str = typer.Option("dev", "--profile", "-p", help="Profile to use"),
 ):

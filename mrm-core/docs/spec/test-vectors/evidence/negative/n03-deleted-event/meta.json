@@ -1,0 +1,5 @@
+{
+  "kind": "negative",
+  "reason": "middle event removed -- subsequent prior_event_hash chain breaks",
+  "epoch": "2026-05-01"
+}

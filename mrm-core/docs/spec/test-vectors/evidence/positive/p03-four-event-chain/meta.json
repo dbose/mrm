@@ -1,0 +1,6 @@
+{
+  "kind": "positive",
+  "summary": "4-event chain exercising full Merkle node pairing",
+  "epoch": "2026-05-01",
+  "expected_root_hash": "e91002a9bb204cdd61c918b4542c02a6ff8cb89c1bd2a23d75c8845bbf28812a"
+}

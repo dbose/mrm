@@ -4,7 +4,7 @@
 |-------|-------|
 | **Model** | credit_scorecard |
 | **Version** | 1.0.0 |
-| **Report Date** | 2026-05-10 09:01 UTC |
+| **Report Date** | 2026-05-16 05:28 UTC |
 | **Regulatory Framework** | OSFI E-23 -- Guideline on Enterprise-Wide Model Risk Management |
 | **Jurisdiction** | Canada (All FRFIs) |
 | **Risk Tier** | tier_1 |
@@ -19,7 +19,7 @@
 
 This report presents the independent validation results for the
 **credit_scorecard** model (v1.0.0)
-conducted on 2026-05-10.
+conducted on 2026-05-16.
 
 The validation was performed in accordance with **OSFI E-23 -- Guideline on Enterprise-Wide Model Risk Management**
 (effective May 1, 2027). This guideline applies to all federally
@@ -32,15 +32,15 @@ based on OSFI E-23 Section 2.2 risk tiering criteria (impact, complexity,
 and uncertainty), requiring annual
 independent validation.
 
-### Overall Result: **APPROVED FOR USE**
+### Overall Result: **REQUIRES REMEDIATION**
 
 | Metric | Value |
 |--------|-------|
-| Validation Tests Executed | 8 |
-| Tests Passed | 8 |
-| Tests Failed | 0 |
-| Pass Rate | 100.0% |
-| Validation Status | **PASS** |
+| Validation Tests Executed | 6 |
+| Tests Passed | 5 |
+| Tests Failed | 1 |
+| Pass Rate | 83.3% |
+| Validation Status | **FAIL** |
 
 **Model Purpose:** Probability of Default model for consumer credit
 
@@ -125,17 +125,17 @@ evidence demonstrating compliance.
 |---------|-------------|--------|----------|
 | Section 2.1 | Model Identification | NOT ASSESSED | No tests mapped |
 | Section 2.2 | Risk Tiering and Materiality Assessment | NOT ASSESSED | No tests mapped |
-| Section 3.1 | Governance Framework | NOT ASSESSED | No tests mapped |
+| Section 3.1 | Governance Framework | COMPLIANT | compliance.GovernanceCheck: PASS |
 | Section 3.2 | Roles and Accountability | NOT ASSESSED | No tests mapped |
 | Section 3.3 | Senior Management and Board Oversight | NOT ASSESSED | No tests mapped |
 | Section 3.4 | Three Lines of Defence | NOT ASSESSED | No tests mapped |
 | Section 4.1 | Model Design and Theory | NOT ASSESSED | No tests mapped |
-| Section 4.2 | Data Quality and Governance | COMPLIANT | tabular_dataset.MissingValues: PASS; tabular_dataset.ClassImbalance: PASS; tabular_dataset.OutlierDetection: PASS |
+| Section 4.2 | Data Quality and Governance | NOT ASSESSED | No tests mapped |
 | Section 4.3 | Model Implementation and Testing | NOT ASSESSED | No tests mapped |
 | Section 5.1 | Independent Validation | NOT ASSESSED | No tests mapped |
 | Section 5.2 | Validation Scope and Activities | NOT ASSESSED | No tests mapped |
 | Section 5.3 | Conceptual Soundness Review | NOT ASSESSED | No tests mapped |
-| Section 5.4 | Outcomes Analysis and Backtesting | COMPLIANT | model.Accuracy: PASS; model.ROCAUC: PASS; model.Precision: PASS; model.Recall: PASS; model.Gini: PASS |
+| Section 5.4 | Outcomes Analysis and Backtesting | COMPLIANT | model.ROCAUC: PASS; model.Gini: PASS |
 | Section 5.5 | Sensitivity Analysis and Scenario Testing | NOT ASSESSED | No tests mapped |
 | Section 6.1 | Ongoing Monitoring Framework | NOT ASSESSED | No tests mapped |
 | Section 6.2 | Performance Monitoring and Alerting | NOT ASSESSED | No tests mapped |
@@ -155,152 +155,25 @@ evidence demonstrating compliance.
 Per OSFI E-23 Section 5.2, validation activities include conceptual
 soundness review, outcomes analysis, and sensitivity testing.
 
-### tabular_dataset.MissingValues ✅ PASS (score: 1.0000)
-**OSFI E-23 Reference:** Section 4.2 -- Data Quality and Governance
+### tabular.MissingValues ✅ PASS (score: 0.0200)
+**OSFI E-23 Reference:** General -- General Validation
 
-**Test Details:**
-```json
-{
-  "total_values": 6300,
-  "missing_count": 0,
-  "missing_ratio": 0.0,
-  "threshold": 0.05,
-  "columns_over_threshold": {}
-}
-```
+### tabular.OutlierDetection ❌ FAIL (score: 0.1700)
+**OSFI E-23 Reference:** General -- General Validation
 
-### tabular_dataset.ClassImbalance ✅ PASS (score: 0.2867)
-**OSFI E-23 Reference:** Section 4.2 -- Data Quality and Governance
+**Failure Reason:** Outlier rate above 0.15
 
-**Test Details:**
-```json
-{
-  "class_counts": {
-    "0": 214,
-    "1": 86
-  },
-  "minority_ratio": 0.2866666666666667,
-  "min_ratio": 0.1,
-  "total_samples": 300
-}
-```
+### tabular.DataDrift ✅ PASS (score: 0.0800)
+**OSFI E-23 Reference:** General -- General Validation
 
-### tabular_dataset.OutlierDetection ✅ PASS (score: 0.9916)
-**OSFI E-23 Reference:** Section 4.2 -- Data Quality and Governance
-
-**Test Details:**
-```json
-{
-  "outlier_counts": {
-    "feature_0": 1,
-    "feature_1": 5,
-    "feature_2": 4,
-    "feature_3": 2,
-    "feature_4": 4,
-    "feature_5": 3,
-    "feature_6": 4,
-    "feature_7": 6,
-    "feature_8": 2,
-    "feature_9": 3,
-    "feature_10": 0,
-    "feature_11": 2,
-    "feature_12": 0,
-    "feature_13": 3,
-    "feature_14": 0,
-    "feature_15": 5,
-    "feature_16": 3,
-    "feature_17": 4,
-    "feature_18": 2,
-    "feature_19": 0,
-    "target": 0
-  },
-  "total_outliers": 53,
-  "outlier_ratio": 0.008412698412698413,
-  "threshold": 0.15,
-  "numeric_columns": [
-    "feature_0",
-    "feature_1",
-    "feature_2",
-    "feature_3",
-    "feature_4",
-    "feature_5",
-    "feature_6",
-    "feature_7",
-    "feature_8",
-    "feature_9",
-    "feature_10",
-    "feature_11",
-    "feature_12",
-    "feature_13",
-    "feature_14",
-    "feature_15",
-    "feature_16",
-    "feature_17",
-    "feature_18",
-    "feature_19",
-    "target"
-  ]
-}
-```
-
-### model.Accuracy ✅ PASS (score: 0.8400)
+### model.ROCAUC ✅ PASS (score: 0.8400)
 **OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
 
-**Test Details:**
-```json
-{
-  "accuracy": 0.84,
-  "min_score": 0.7,
-  "num_samples": 300
-}
-```
-
-### model.ROCAUC ✅ PASS (score: 0.9077)
+### model.Gini ✅ PASS (score: 0.5500)
 **OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
 
-**Test Details:**
-```json
-{
-  "roc_auc": 0.9077374483807868,
-  "min_score": 0.7,
-  "num_samples": 300
-}
-```
-
-### model.Gini ✅ PASS (score: 0.8155)
-**OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
-
-**Test Details:**
-```json
-{
-  "gini": 0.8154748967615737,
-  "roc_auc": 0.9077374483807868,
-  "min_score": 0.4,
-  "num_samples": 300
-}
-```
-
-### model.Precision ✅ PASS (score: 0.8360)
-**OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
-
-**Test Details:**
-```json
-{
-  "precision": 0.8359821428571429,
-  "min_score": 0.65
-}
-```
-
-### model.Recall ✅ PASS (score: 0.8400)
-**OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
-
-**Test Details:**
-```json
-{
-  "recall": 0.84,
-  "min_score": 0.65
-}
-```
+### compliance.GovernanceCheck ✅ PASS (score: 1.0000)
+**OSFI E-23 Reference:** Section 3.1 -- Governance Framework
 
 
 ## 5. Revalidation Triggers (OSFI E-23 Section 6.3)
@@ -316,16 +189,29 @@ require model revalidation, including:
 
 ## 6. Findings and Recommendations
 
-### Summary
+### Critical Findings
 
-All validation tests passed. The model demonstrates:
-- Sound theoretical foundations (OSFI E-23 Section 4.1)
-- Adequate data quality and governance (OSFI E-23 Section 4.2)
-- Satisfactory performance and accuracy (OSFI E-23 Section 5.4)
-- Appropriate sensitivity under stress scenarios (OSFI E-23 Section 5.5)
+**1 validation test(s) failed**, indicating
+potential model risk issues requiring remediation:
 
-**Validation Conclusion:** Model is **APPROVED FOR USE** subject to
-ongoing monitoring per OSFI E-23 Section 6.
+- **tabular.OutlierDetection** (OSFI E-23 General)
+  - Issue: Outlier rate above 0.15
+
+### Recommendations
+
+Per OSFI E-23 Section 5.1, the following actions are recommended:
+
+1. **Model owners should address all failed tests** within the
+   remediation period specified in the FRFI's model risk policy.
+2. **Revalidation required** after remediation to confirm issues
+   are resolved (OSFI E-23 Section 6.3).
+3. **Model use should be restricted** pending remediation, with
+   escalation to senior management if issues are material.
+4. **Enhanced monitoring** of model outputs during the remediation
+   period (OSFI E-23 Section 6.2).
+
+**Validation Conclusion:** Model **REQUIRES REMEDIATION** before
+approval for production use.
 
 ## 7. Validation Sign-Off (OSFI E-23 Section 5.1)
 
@@ -334,7 +220,7 @@ qualified staff with sufficient expertise to assess model soundness.
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
-| **Independent Validator** | [Name] | 2026-05-10 | _______________ |
+| **Independent Validator** | [Name] | 2026-05-16 | _______________ |
 | **Senior Model Risk Officer** | [Name] | __________ | _______________ |
 | **Model Owner** | credit_risk_team | __________ | _______________ |
 
@@ -342,7 +228,7 @@ qualified staff with sufficient expertise to assess model soundness.
 
 **Report Generated By:** mrm-core v1.0.0  
 **Framework:** OSFI E-23 -- Guideline on Enterprise-Wide Model Risk Management  
-**Report Date:** 2026-05-10 09:01 UTC
+**Report Date:** 2026-05-16 05:28 UTC
 
 ---
 

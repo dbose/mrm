@@ -36,24 +36,28 @@ test_suites:
     - model.ROCAUC
     - tabular_dataset.ClassImbalance
 
-# Backend configuration
+# Backend configuration -- declarative shape only.
+# Host-, env-, and credential-specific bindings live in profiles.yml.
 backends:
-  default: local
-  
-  local:
-    type: filesystem
-    path: ~/.mrm/data
+  default_results:
+    type: local
 
-# External model catalogs
+  default_evidence:
+    type: local
+    retention_days: 2555
+
+  default_replay:
+    type: local
+
+  root_signer:
+    type: local
+
+# External model catalogs -- declarative shape only.
+# host/token/catalog/schema/cache_ttl_seconds live in profiles.yml.
 catalogs:
   databricks:
     type: databricks_unity
-    host: "{{ env_var('DATABRICKS_HOST') }}"
-    token: "{{ env_var('DATABRICKS_TOKEN') }}"
-    catalog: workspace
-    schema: default
     mlflow_registry: true
-    cache_ttl_seconds: 300
 
 # Documentation templates
 docs:

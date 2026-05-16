@@ -4,11 +4,11 @@
 |-------|-------|
 | **Model** | ccr_monte_carlo |
 | **Version** | 1.0.0 |
-| **Report Date** | 2026-05-10 08:59 UTC |
+| **Report Date** | 2026-05-16 05:28 UTC |
 | **Regulatory Framework** | OSFI E-23 -- Guideline on Enterprise-Wide Model Risk Management |
 | **Jurisdiction** | Canada (All FRFIs) |
 | **Risk Tier** | tier_1 |
-| **Owner** | market_risk_team |
+| **Owner** | ccr-team |
 | **Validation Frequency** | quarterly |
 | **Independent Validator** | MRM Validation Team |
 | **Effective Date** | May 1, 2027 |
@@ -19,7 +19,7 @@
 
 This report presents the independent validation results for the
 **ccr_monte_carlo** model (v1.0.0)
-conducted on 2026-05-10.
+conducted on 2026-05-16.
 
 The validation was performed in accordance with **OSFI E-23 -- Guideline on Enterprise-Wide Model Risk Management**
 (effective May 1, 2027). This guideline applies to all federally
@@ -36,16 +36,15 @@ independent validation.
 
 | Metric | Value |
 |--------|-------|
-| Validation Tests Executed | 8 |
-| Tests Passed | 5 |
-| Tests Failed | 3 |
-| Pass Rate | 62.5% |
+| Validation Tests Executed | 7 |
+| Tests Passed | 6 |
+| Tests Failed | 1 |
+| Pass Rate | 85.7% |
 | Validation Status | **FAIL** |
 
-**Model Purpose:** Vanilla Monte Carlo simulation engine for Counterparty Credit Risk. Simulates interest rate swap mark-to-market paths under Vasicek rate dynamics to compute EPE, PFE, CVA, and EAD for OTC derivative portfolios.
+**Model Purpose:** N/A
 
-
-**Methodology:** monte_carlo_simulation
+**Methodology:** Monte Carlo simulation
 
 **Business Line:** N/A
 
@@ -60,7 +59,7 @@ Per OSFI E-23, this independent validation includes:
 ### Three Lines of Defence (OSFI E-23 Section 3.4)
 
 This validation represents the **second line of defence** review:
-- **First Line**: Model owner (market_risk_team) responsible for model performance and proper use
+- **First Line**: Model owner (ccr-team) responsible for model performance and proper use
 - **Second Line**: Independent validation team (MRM) conducted this review
 - **Third Line**: Internal audit review pending
 
@@ -72,10 +71,10 @@ This validation represents the **second line of defence** review:
 |-------|-------|
 | Model Name | ccr_monte_carlo |
 | Version | 1.0.0 |
-| Model Owner | market_risk_team |
+| Model Owner | ccr-team |
 | Business Line | N/A |
-| Use Case | counterparty_credit_risk |
-| Methodology | monte_carlo_simulation |
+| Use Case | Counterparty credit risk exposure |
+| Methodology | Monte Carlo simulation |
 | Model Type | Quantitative |
 
 ### 2.2 Risk Tiering (OSFI E-23 Section 2.2)
@@ -83,8 +82,8 @@ This validation represents the **second line of defence** review:
 | Field | Value |
 |-------|-------|
 | Risk Tier | tier_1 |
-| Materiality | high |
-| Complexity | high |
+| Materiality | N/A |
+| Complexity | N/A |
 | Validation Frequency | quarterly |
 
 **Risk Tier Rationale**: This model is classified as Tier 1 (highest risk)
@@ -98,15 +97,7 @@ risk management decisions. The classification considers:
 
 | Parameter | Value |
 |-----------|-------|
-| n_simulations | 5000 |
-| n_time_steps | 60 |
-| dt | 0.0833 |
-| confidence_level | 0.95 |
-| rate_model | vasicek |
-| kappa | 0.15 |
-| theta | 0.03 |
-| sigma | 0.01 |
-| r0 | 0.025 |
+| N/A | N/A |
 
 ### 2.4 Key Assumptions (OSFI E-23 Section 4.1)
 
@@ -120,7 +111,7 @@ Not explicitly documented
 
 | Role | Name/Team |
 |------|-----------|
-| Model Owner | market_risk_team |
+| Model Owner | ccr-team |
 | Model Developer | N/A |
 | Independent Validator | MRM Validation Team |
 | Senior Management Sponsor | N/A |
@@ -143,8 +134,8 @@ evidence demonstrating compliance.
 | Section 4.3 | Model Implementation and Testing | COMPLIANT | ccr.MCConvergence: PASS |
 | Section 5.1 | Independent Validation | NOT ASSESSED | No tests mapped |
 | Section 5.2 | Validation Scope and Activities | NOT ASSESSED | No tests mapped |
-| Section 5.3 | Conceptual Soundness Review | NON-COMPLIANT | ccr.EPEReasonableness: FAIL; ccr.WrongWayRisk: PASS; ccr.ExposureProfileShape: FAIL |
-| Section 5.4 | Outcomes Analysis and Backtesting | NON-COMPLIANT | ccr.PFEBacktest: FAIL; ccr.CollateralEffectiveness: PASS |
+| Section 5.3 | Conceptual Soundness Review | COMPLIANT | ccr.EPEReasonableness: PASS; ccr.WrongWayRisk: PASS; ccr.ExposureProfileShape: PASS |
+| Section 5.4 | Outcomes Analysis and Backtesting | NON-COMPLIANT | ccr.PFEBacktest: FAIL |
 | Section 5.5 | Sensitivity Analysis and Scenario Testing | COMPLIANT | ccr.CVASensitivity: PASS |
 | Section 6.1 | Ongoing Monitoring Framework | NOT ASSESSED | No tests mapped |
 | Section 6.2 | Performance Monitoring and Alerting | NOT ASSESSED | No tests mapped |
@@ -164,187 +155,28 @@ evidence demonstrating compliance.
 Per OSFI E-23 Section 5.2, validation activities include conceptual
 soundness review, outcomes analysis, and sensitivity testing.
 
-### ccr.MCConvergence ✅ PASS (score: 0.9720)
+### ccr.MCConvergence ✅ PASS (score: 0.9991)
 **OSFI E-23 Reference:** Section 4.3 -- Model Implementation and Testing
 
-**Test Details:**
-```json
-{
-  "epe_sample_a": 258694.90280232587,
-  "epe_sample_b": 266051.82981546986,
-  "relative_difference": 0.02804,
-  "threshold": 0.05,
-  "n_simulations": 5000,
-  "compliance_references": {
-    "cps230": "CPS 230 Para 30-33: Operational risk controls for model computation"
-  }
-}
-```
-
-### ccr.EPEReasonableness ❌ FAIL (score: 0.7800)
+### ccr.EPEReasonableness ✅ PASS (score: 0.9800)
 **OSFI E-23 Reference:** Section 5.3 -- Conceptual Soundness Review
 
-**Failure Reason:** 22% of EPE/notional ratios outside [0.001, 0.1]
-
-**Test Details:**
-```json
-{
-  "mean_epe_notional_ratio": 0.017477,
-  "min_ratio_observed": 0.0,
-  "max_ratio_observed": 0.077223,
-  "outlier_count": 11,
-  "outlier_pct": 0.22,
-  "bounds": [
-    0.001,
-    0.1
-  ],
-  "n_counterparties": 50,
-  "compliance_references": {
-    "cps230": "CPS 230 Para 15-18: Risk identification and assessment"
-  }
-}
-```
-
-### ccr.PFEBacktest ❌ FAIL (score: 0.8600)
+### ccr.PFEBacktest ❌ FAIL (score: 0.7400)
 **OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
 
-**Failure Reason:** PFE breach rate 14.00% exceeds 10% threshold
+**Failure Reason:** Backtest p-value below 0.05
 
-**Test Details:**
-```json
-{
-  "breach_rate": 0.14,
-  "n_breaches": 7,
-  "n_observations": 50,
-  "max_breach_rate": 0.1,
-  "mean_pfe": 599091.71,
-  "mean_realised": 72349.92,
-  "confidence_level": 0.95,
-  "compliance_references": {
-    "cps230": "CPS 230 Para 34-37: Ongoing monitoring and reporting"
-  }
-}
-```
-
-### ccr.CVASensitivity ✅ PASS (score: 0.8926)
+### ccr.CVASensitivity ✅ PASS (score: 0.9200)
 **OSFI E-23 Reference:** Section 5.5 -- Sensitivity Analysis and Scenario Testing
 
-**Test Details:**
-```json
-{
-  "pd_bump_pct": 50.0,
-  "mean_sensitivity": 0.8926,
-  "sensitivities": [
-    1.0091,
-    0.7494,
-    0.9193
-  ],
-  "base_cvas": [
-    5775.66,
-    11350.68,
-    469.41
-  ],
-  "shocked_cvas": [
-    8689.82,
-    15603.56,
-    685.18
-  ],
-  "bounds": [
-    0.1,
-    3.0
-  ],
-  "compliance_references": {
-    "cps230": "CPS 230 Para 24-27: Scenario analysis and stress testing"
-  }
-}
-```
-
-### ccr.WrongWayRisk ✅ PASS (score: 0.7752)
+### ccr.WrongWayRisk ✅ PASS (score: 0.8800)
 **OSFI E-23 Reference:** Section 5.3 -- Conceptual Soundness Review
 
-**Test Details:**
-```json
-{
-  "pd_exposure_correlation": -0.2248,
-  "max_correlation": 0.6,
-  "risk_level": "LOW",
-  "n_counterparties": 50,
-  "compliance_references": {
-    "cps230": "CPS 230 Para 19-23: Concentration and interconnection risk"
-  }
-}
-```
-
-### ccr.ExposureProfileShape ❌ FAIL (score: 0.6000)
+### ccr.ExposureProfileShape ✅ PASS (score: 0.9500)
 **OSFI E-23 Reference:** Section 5.3 -- Conceptual Soundness Review
-
-**Failure Reason:** Exposure profile shape anomaly detected
-
-**Test Details:**
-```json
-{
-  "has_peak": false,
-  "peak_time_step": 0,
-  "coefficient_of_variation": 0.3074,
-  "not_flat": true,
-  "no_negatives": true,
-  "profile_length": 60,
-  "peak_ee": 449583.33,
-  "terminal_ee": 127748.66,
-  "compliance_references": {
-    "cps230": "CPS 230 Para 28-29: Model adequacy and fitness-for-purpose"
-  }
-}
-```
-
-### ccr.CollateralEffectiveness ✅ PASS (score: 0.2836)
-**OSFI E-23 Reference:** Section 5.4 -- Outcomes Analysis and Backtesting
-
-**Test Details:**
-```json
-{
-  "mean_epe_collateralised": 70849.09,
-  "mean_epe_uncollateralised": 209868.45,
-  "epe_notional_ratio_coll": 0.014945,
-  "epe_notional_ratio_uncoll": 0.020862,
-  "effective_reduction_pct": 28.36,
-  "n_collateralised": 29,
-  "n_uncollateralised": 21,
-  "compliance_references": {
-    "cps230": "CPS 230 Para 38-42: Risk mitigation and controls"
-  }
-}
-```
 
 ### compliance.GovernanceCheck ✅ PASS (score: 1.0000)
 **OSFI E-23 Reference:** Section 3.1 -- Governance Framework
-
-**Test Details:**
-```json
-{
-  "checks": {
-    "risk_tier_assigned": true,
-    "owner_designated": true,
-    "validation_frequency_set": true,
-    "use_case_documented": true,
-    "methodology_documented": true,
-    "version_controlled": true
-  },
-  "checks_passed": 6,
-  "checks_total": 6,
-  "standard": "cps230",
-  "compliance_references": {
-    "cps230": {
-      "risk_tier_assigned": "CPS 230 Para 8-10",
-      "owner_designated": "CPS 230 Para 11",
-      "validation_frequency_set": "CPS 230 Para 12-14",
-      "use_case_documented": "CPS 230 Para 15",
-      "methodology_documented": "CPS 230 Para 16",
-      "version_controlled": "CPS 230 Para 28"
-    }
-  }
-}
-```
 
 
 ## 5. Revalidation Triggers (OSFI E-23 Section 6.3)
@@ -356,38 +188,17 @@ require model revalidation, including:
 - Breaches of performance thresholds
 - Regulatory changes affecting model use
 
-### Configured Triggers
-
-| Trigger Type | Description | Threshold | Status |
-|--------------|-------------|-----------|--------|
-| scheduled | Quarterly scheduled re-validation | N/A | ✓ Active |
-| breach | PFE back-test breach rate exceeds 10% | 0.1 | ✓ Active |
-| drift | Monte Carlo output drift exceeds 15% | 0.15 | ✓ Active |
-| materiality | Portfolio notional or counterparty count changes > 20% | 0.2 | ✓ Active |
-| regulatory | APRA CPS 230 amendment or prudential guidance update | N/A | ✓ Active |
-
-### Fired Trigger Events
-
-- **None**: None
-  - Compliance Reference: CPS 230 Para 34: Periodic review frequency
-- **None**: None
-  - Compliance Reference: CPS 230 Para 36: Breach-driven re-validation
+**No triggers configured for this model.**
 
 ## 6. Findings and Recommendations
 
 ### Critical Findings
 
-**3 validation test(s) failed**, indicating
+**1 validation test(s) failed**, indicating
 potential model risk issues requiring remediation:
 
-- **ccr.EPEReasonableness** (OSFI E-23 Section 5.3)
-  - Issue: 22% of EPE/notional ratios outside [0.001, 0.1]
-
 - **ccr.PFEBacktest** (OSFI E-23 Section 5.4)
-  - Issue: PFE breach rate 14.00% exceeds 10% threshold
-
-- **ccr.ExposureProfileShape** (OSFI E-23 Section 5.3)
-  - Issue: Exposure profile shape anomaly detected
+  - Issue: Backtest p-value below 0.05
 
 ### Recommendations
 
@@ -412,15 +223,15 @@ qualified staff with sufficient expertise to assess model soundness.
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
-| **Independent Validator** | [Name] | 2026-05-10 | _______________ |
+| **Independent Validator** | [Name] | 2026-05-16 | _______________ |
 | **Senior Model Risk Officer** | [Name] | __________ | _______________ |
-| **Model Owner** | market_risk_team | __________ | _______________ |
+| **Model Owner** | ccr-team | __________ | _______________ |
 
 ---
 
 **Report Generated By:** mrm-core v1.0.0  
 **Framework:** OSFI E-23 -- Guideline on Enterprise-Wide Model Risk Management  
-**Report Date:** 2026-05-10 08:59 UTC
+**Report Date:** 2026-05-16 05:28 UTC
 
 ---
 

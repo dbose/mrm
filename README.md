@@ -151,13 +151,17 @@ ADR: [Replay as first-class](mrm-core/docs/adr/0003-replay-as-first-class-primit
 |---|---|---|
 | Hash-chained `EvidencePacket` | Yes  | Yes |
 | Local + S3 Object Lock backends | Yes  | Yes managed |
-| GPG / age signatures | Yes  | — |
-| Daily Merkle root publication | Planned [P9](STRATEGY.md) | Yes  |
-| HSM-backed root signing | — | Yes  |
-| Conformance test-vector suite | Planned [P9](STRATEGY.md) | — |
+| HMAC-chained fast-path event log (per-session keys, daily rotation) | Yes | Yes |
+| RFC-6962 Merkle daily root | Yes | Yes |
+| `LocalSigner` (HMAC) + `GpgSigner` + `AgeSigner` | Yes | — |
+| `KmsSigner` -- AWS KMS today; GCP / Azure pluggable | Yes | Yes managed |
+| HSM-backed root signing (FIPS 140-2 L3+, AWS CloudHSM / GCP Cloud HSM / Azure Dedicated HSM) | Plug-point only | Yes (paid) |
+| Conformance test-vector suite (3 positive + 3 negative) | Yes | — |
+| 7-year retention SLA | — | Yes |
+| Customer-managed keys (BYOK) | — | Yes Enterprise |
 
 Spec: [Evidence Vault v1](mrm-core/docs/spec/evidence-vault-v1.md).
-ADR: [Content-addressed hash chains](mrm-core/docs/adr/0002-evidence-vault-hash-chain.md).
+ADRs: [Content-addressed hash chains](mrm-core/docs/adr/0002-evidence-vault-hash-chain.md), [Signer plug-point and HSM tier line](mrm-core/docs/adr/0006-signer-plugpoint-and-hsm-tiering.md).
 
 ### dbt-style workflow primitives
 
@@ -202,9 +206,157 @@ replay:
 ```bash
 mrm test --select ccr_monte_carlo
 mrm docs generate ccr_monte_carlo --compliance standard:cps230,sr117,eu_ai_act
-mrm evidence freeze ccr_monte_carlo --backend s3 --bucket bank-evidence --retention 2555
+mrm evidence freeze ccr_monte_carlo                  # backend resolved from profile
 mrm replay sample --model ccr_monte_carlo --since 2026-01-01 --n 50
 ```
+
+No `--backend`, `--bucket`, or `--retention` flag in normal operation —
+the active profile decides, so the same command works in dev (local
+filesystem) and prod (S3 + Object Lock) without code changes.
+
+---
+
+## Configuration — dbt-style project / profile split
+
+Every configurable backend in `mrm-core` is resolved through one
+ladder, modelled on `dbt-core` / `dbt Cloud`:
+
+```
+1. CLI flag passed on this invocation
+2. env var (e.g. MRM_BACKEND_DEFAULT_EVIDENCE_BUCKET=...)
+3. profiles.yml: mrm.outputs.<target>.<section>.<role>
+4. mrm_project.yml: <section>.<role>
+5. hard-coded default
+```
+
+**`mrm_project.yml`** declares what the project IS — the role names
+and their capability-shaped defaults, committed to git:
+
+```yaml
+name: ccr_example
+version: 1.0.0
+
+backends:
+  default_results:   { type: local }
+  default_evidence:  { type: local, retention_days: 2555 }
+  default_replay:    { type: local }
+  root_signer:       { type: local }     # local | gpg | age | kms | cloud-hsm
+
+catalogs:
+  databricks:
+    type: databricks_unity
+    mlflow_registry: true
+```
+
+**`profiles.yml`** declares where the project RUNS — host names,
+bucket names, credentials, per target. Typically lives outside the
+repo (secrets manager, `~/.mrm/profiles.yml`, or per-env injection):
+
+```yaml
+mrm:
+  target: dev
+  outputs:
+    dev:
+      backends:
+        default_evidence: { type: local }
+        default_replay:   { type: local }
+      catalogs:
+        databricks:
+          host: "{{ env_var('DATABRICKS_HOST_DEV') }}"
+          token: "{{ env_var('DATABRICKS_TOKEN_DEV') }}"
+          catalog: workspace_dev
+          schema: sandbox
+          cache_ttl_seconds: 60
+
+    prod:
+      backends:
+        default_evidence:
+          type: s3_object_lock
+          bucket: bank-evidence-prod
+          region: ap-southeast-2
+        default_replay:
+          type: s3
+          bucket: bank-replay-prod
+        root_signer:
+          type: kms
+          key_uri: aws-kms://ap-southeast-2/alias/mrm-root-prod
+      catalogs:
+        databricks:
+          host: "{{ env_var('DATABRICKS_HOST_PROD') }}"
+          token: "{{ env_var('DATABRICKS_TOKEN_PROD') }}"
+          catalog: workspace_prod
+          schema: gold
+          cache_ttl_seconds: 600
+```
+
+### Backend roles
+
+| Role | Purpose | OSS types | Paid-tier types |
+|---|---|---|---|
+| `default_results` | Test-results storage | `local`, `mlflow` | — |
+| `default_evidence` | Evidence vault | `local`, `s3_object_lock` | — (managed via Cloud) |
+| `default_replay` | DecisionRecord chain store | `local`, `s3` | — (managed via Cloud) |
+| `root_signer` | Daily Merkle root signature | `local`, `gpg`, `age`, `kms` | `cloud-hsm` (FIPS 140-2 L3+) |
+
+### Catalogs
+
+Catalogs are **declared** in `mrm_project.yml` (existence + capability
+flags) and **bound** in `profiles.yml` (host / token / catalog /
+schema / cache TTL). A catalog declared but not bound for the active
+target raises a clear error — no silent no-op loads.
+
+### Switching targets
+
+```bash
+mrm test --select ccr_monte_carlo                 # uses default target (dev)
+mrm test --select ccr_monte_carlo --profile prod  # switches to prod bindings
+mrm evidence freeze ccr_monte_carlo --profile prod
+```
+
+### Overriding for one invocation
+
+CLI flags survive as last-write-wins overrides:
+
+```bash
+# Resolution falls through the chain.
+mrm evidence freeze ccr_monte_carlo
+
+# Override just the bucket for this run.
+mrm evidence freeze ccr_monte_carlo --bucket bank-evidence-test
+
+# Override via env var (highest precedence below CLI).
+MRM_BACKEND_DEFAULT_EVIDENCE_BUCKET=ad-hoc \
+  mrm evidence freeze ccr_monte_carlo
+```
+
+### When something is missing
+
+The resolver raises a diagnostic naming every layer it searched:
+
+```
+Required backends role 'default_evidence' could not be resolved for target 'staging'.
+  Searched (highest to lowest precedence):
+    1. CLI flag overrides (none, or all None)
+    2. Env vars matching MRM_BACKEND_DEFAULT_EVIDENCE_<KEY>
+    3. profiles.yml: mrm.outputs.staging.backends.default_evidence
+    4. mrm_project.yml: backends.default_evidence
+  Add the role to at least one layer.
+```
+
+### Secrets handling
+
+- Literal credentials never appear in either YAML.
+- Two indirection forms are supported:
+  - **Jinja-style** — `host: "{{ env_var('DATABRICKS_HOST_PROD') }}"`.
+  - **Suffix sugar** — `bucket_env: MY_BUCKET_NAME`.
+- Missing env vars render to `null`; the resolver is silent at parse,
+  loud at use, matching the dbt convention.
+
+See [`mrm/core/backend_resolver.py`](mrm-core/mrm/core/backend_resolver.py)
+for the reference implementation and
+[`ccr_example/`](mrm-core/ccr_example/) /
+[`credit_risk_example/`](mrm-core/credit_risk_example/) for worked
+configs.
 
 ---
 
@@ -216,11 +368,18 @@ mrm list  models|tests|suites        # introspect
 mrm test  [--select ...] [--threads N]
 mrm docs  generate|list-standards|crosswalk
 mrm evidence  freeze|verify|list
+mrm evidence root  publish|verify|show|list-signers
+mrm evidence conformance  run
 mrm replay  record|reconstruct|verify|sample|verify-chain
 mrm triggers  check|list|run
 mrm catalog  list|publish|sync          # Databricks UC + MLflow
 mrm debug  --show-config|--show-dag|--show-catalog
 ```
+
+Every command accepts `--profile <target>` to switch profile targets
+(default `dev`). Backend-shaped flags (`--backend`, `--bucket`,
+`--retention`, `--signer`, `--key-path`) default to `None` and only
+override the project/profile chain when explicitly passed.
 
 Full help: `mrm <command> --help`.
 
@@ -364,7 +523,7 @@ contracts as formal specs from day one.
   lifecycle, intent to transition to a neutral foundation
   (OpenSSF / CNCF / FINOS) once adoption thresholds are met.
 - [`docs/adr/`](mrm-core/docs/adr/) — Architecture Decision Records
-  for every load-bearing design choice (5 ADRs and counting).
+  for every load-bearing design choice (6 ADRs and counting).
 - [`docs/spec/`](mrm-core/docs/spec/) — PRD-2 specs for:
   - [Decision Record v1](mrm-core/docs/spec/replay-record-v1.md)
   - [Evidence Vault Chain v1](mrm-core/docs/spec/evidence-vault-v1.md)
@@ -381,9 +540,10 @@ mrm-core/
 ├── mrm/
 │   ├── cli/                       Typer CLI
 │   ├── core/                      Project loading, DAG, catalog, triggers
+│   │   ├── backend_resolver.py    Unified config resolution (dbt-style)
 │   │   └── catalog_backends/      Databricks UC + MLflow integration
 │   ├── compliance/                Pluggable regulatory standards
-│   │   └── builtin/               cps230 · sr117 · eu_ai_act · osfi_e23
+│   │   └── builtin/               cps230 · sr117 · sr26_2 · euaiact · osfie23
 │   ├── tests/                     Pluggable test framework
 │   │   └── builtin/               tabular · ccr · model · genai
 │   ├── engine/runner.py           Test runner with replay wiring
@@ -420,15 +580,20 @@ mrm-core/
 - Cross-standard crosswalk (27 concepts × 5 standards, with explicit SR 11-7 → SR 26-2 transition map)
 - Validation trigger engine (6 trigger types)
 - Databricks UC + MLflow + HuggingFace integration
+- **Unified backend / catalog config resolver — dbt-style `mrm_project.yml` (declarative) + `profiles.yml` (per-target bindings); precedence ladder CLI > env > profile > project > defaults**
 - Evidence vault — hash-chained packets, S3 Object Lock backend
+- **Cryptographic vault hardening — HMAC-chained event log, RFC-6962 Merkle daily root, pluggable Signer (`local` / `gpg` / `age` / `kms` OSS; `cloud-hsm` paid-tier stub), 6 conformance vectors**
 - GenAI test pack — 14 tests, LiteLLM unified interface, RAG validation
 - **1:1 Decision Replay — DecisionRecord, capture, OTLP, verify, backends, CLI**
 - Replay capture for **all** model types — sklearn, HF, MLflow, LiteLLM, legacy LLM adapters
 - ADRs + spec PRDs + GOVERNANCE.md posture
 
-**Next:** SR 26-2 plugin, cryptographic vault hardening (Merkle roots,
-HSM signing), 50+-template adversarial pack, GRC connectors.
-See [STRATEGY.md](STRATEGY.md).
+**Test coverage:** 135 pytest passing + 46 end-to-end acceptance
+checks against the worked examples.
+
+**Next:** 50+-template adversarial pack, GRC connectors (OpenPages,
+ServiceNow, Workiva), XVA worked example via ORE. See
+[STRATEGY.md](STRATEGY.md).
 
 ---
 

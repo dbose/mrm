@@ -170,6 +170,7 @@ than replacing it. Three layers to keep distinct:
 - ✅ Federal Reserve SR 26-2 bundled standard (supersedes SR 11-7/SR 21-8) with AI-activity-logging clauses anchored to P7 DecisionRecord and tamper-evident clauses anchored to P5 EvidencePacket
 - ✅ Cross-standard crosswalk mapping 27 concepts across 5 standards (AU/US-SR11-7/US-SR26-2/EU/CA) including explicit SR 11-7 → SR 26-2 transition map
 - ✅ Evidence vault with hash-chained packets, local + S3 Object Lock backends, SEC 17a-4 compliance
+- ✅ Cryptographic vault hardening: HMAC-chained fast-path event log + RFC-6962 Merkle daily root + pluggable Signer (LocalSigner / GpgSigner / AgeSigner / KmsSigner OSS; CloudHsmSigner paid-tier stub) + 6 conformance vectors
 - ✅ GenAI / LLM testing depth: 14 tests across 7 categories (hallucination, bias, robustness, safety, drift, PII, operational)
 - ✅ LLM endpoint adapters: **LiteLLM** unified interface to 100+ providers (OpenAI, Anthropic, Bedrock, Azure, Cohere, etc.) + legacy adapters for backward compatibility
 - ✅ RAG customer service worked example with FAISS retrieval + comprehensive GenAI validation
@@ -505,7 +506,7 @@ Cross-reference NIST AI RMF, FFIEC IT Examination Handbook, OCC
 
 ### P9. Cryptographic evidence vault hardening
 
-- **STATUS:** next (after P5 evidence module ships; layered enhancement)
+- **STATUS:** done
 - **WEDGE:** P5 ships hash-chained packets. Banks under SR 26-2 will
   ask: "Who signed the chain root? How do you prove integrity across
   the year?" The SR-26.2-MRM reference repo answers this with
@@ -952,7 +953,7 @@ Act enforcement creates a buying panic in bank-MRM specifically.
 - No GenAI parity → fixed by P6 ✅
 - **No replay primitive** → fixed by P7 (the wedge)
 - **No US 2026+ jurisdiction** → fixed by P8 (SR 26-2)
-- **No cryptographic chain-of-custody** → fixed by P9
+- **No cryptographic chain-of-custody** → fixed by P9 ✅
 - **No regulator mindshare** → fixed by P11 (comment letters,
   FINOS submission, ADR/GOVERNANCE.md posture)
 - No external customers → fixed by design partner work (see channels)

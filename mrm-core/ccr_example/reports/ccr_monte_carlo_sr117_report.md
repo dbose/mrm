@@ -4,10 +4,10 @@
 |-------|-------|
 | **Model** | ccr_monte_carlo |
 | **Version** | 1.0.0 |
-| **Report Date** | 2026-05-10 06:22 UTC |
+| **Report Date** | 2026-05-16 05:32 UTC |
 | **Regulatory Framework** | Federal Reserve SR 11-7 -- Supervisory Guidance on Model Risk Management |
 | **Risk Tier** | tier_1 |
-| **Owner** | market_risk_team |
+| **Owner** | ccr-team |
 | **Validation Frequency** | quarterly |
 | **Independent Validator** | MRM Team |
 
@@ -17,7 +17,7 @@
 
 This report presents the independent validation results for the
 **ccr_monte_carlo** model (v1.0.0)
-conducted on 2026-05-10.
+conducted on 2026-05-16.
 
 The validation was performed in accordance with **Federal Reserve SR 11-7 -- Supervisory Guidance on Model Risk Management**
 requirements. The model is classified as
@@ -30,16 +30,15 @@ quarterly validation.
 
 | Metric | Value |
 |--------|-------|
-| Validation Tests Executed | 8 |
-| Tests Passed | 5 |
-| Tests Failed | 3 |
-| Pass Rate | 62.5% |
+| Validation Tests Executed | 7 |
+| Tests Passed | 6 |
+| Tests Failed | 1 |
+| Pass Rate | 85.7% |
 | Validation Status | **FAIL** |
 
-**Model Purpose:** Vanilla Monte Carlo simulation engine for Counterparty Credit Risk. Simulates interest rate swap mark-to-market paths under Vasicek rate dynamics to compute EPE, PFE, CVA, and EAD for OTC derivative portfolios.
+**Model Purpose:** N/A
 
-
-**Methodology:** monte_carlo_simulation
+**Methodology:** Monte Carlo simulation
 
 ### Validation Scope
 
@@ -57,28 +56,20 @@ Per SR 11-7 Section II, this validation includes:
 |-------|-------|
 | Model Name | ccr_monte_carlo |
 | Version | 1.0.0 |
-| Owner | market_risk_team |
+| Owner | ccr-team |
 | Business Line | N/A |
-| Use Case | counterparty_credit_risk |
-| Methodology | monte_carlo_simulation |
+| Use Case | Counterparty credit risk exposure |
+| Methodology | Monte Carlo simulation |
 | Risk Tier | tier_1 |
-| Materiality | high |
-| Complexity | high |
+| Materiality | N/A |
+| Complexity | N/A |
 | Validation Frequency | quarterly |
 
 ### 2.2 Model Parameters and Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| n_simulations | 5000 |
-| n_time_steps | 60 |
-| dt | 0.0833 |
-| confidence_level | 0.95 |
-| rate_model | vasicek |
-| kappa | 0.15 |
-| theta | 0.03 |
-| sigma | 0.01 |
-| r0 | 0.025 |
+| N/A | N/A |
 
 ### 2.3 Key Assumptions (SR 11-7 Section I.C)
 
@@ -107,9 +98,9 @@ evidence demonstrating compliance.
 | Section I.C | Model Assumptions and Data | NOT ASSESSED | No tests mapped |
 | Section I.D | Model Outputs and Reporting | NOT ASSESSED | No tests mapped |
 | Section II.A | Validation Scope and Objectives | NOT ASSESSED | No tests mapped |
-| Section II.B | Evaluation of Conceptual Soundness | NON-COMPLIANT | ccr.MCConvergence: PASS; ccr.EPEReasonableness: FAIL; ccr.WrongWayRisk: PASS; ccr.ExposureProfileShape: FAIL |
+| Section II.B | Evaluation of Conceptual Soundness | COMPLIANT | ccr.MCConvergence: PASS; ccr.EPEReasonableness: PASS; ccr.WrongWayRisk: PASS; ccr.ExposureProfileShape: PASS |
 | Section II.C | Ongoing Monitoring | NOT ASSESSED | No tests mapped |
-| Section II.D | Outcomes Analysis and Backtesting | NON-COMPLIANT | ccr.PFEBacktest: FAIL; ccr.CollateralEffectiveness: PASS |
+| Section II.D | Outcomes Analysis and Backtesting | NON-COMPLIANT | ccr.PFEBacktest: FAIL |
 | Section II.E | Sensitivity Analysis and Stress Testing | COMPLIANT | ccr.CVASensitivity: PASS |
 | Section III.A | Model Risk Management Framework | COMPLIANT | compliance.GovernanceCheck: PASS |
 | Section III.B | Roles and Responsibilities | NOT ASSESSED | No tests mapped |
@@ -136,20 +127,8 @@ independent of model development and use.
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
-| Score | 0.9720 |
+| Score | 0.9991 |
 | SR 11-7 Reference | Section II.B: Evaluation of Conceptual Soundness |
-
-**Validation Evidence:**
-
-```json
-{
-  "epe_sample_a": 258694.90280232587,
-  "epe_sample_b": 266051.82981546986,
-  "relative_difference": 0.02804,
-  "threshold": 0.05,
-  "n_simulations": 5000
-}
-```
 
 **SR 11-7 Requirement:** Validation should assess whether the model design and construction are consistent with sound theory and judgment, and appropriate for the intended use. This includes review of model assumptions, mathematical construction, and theoretical basis.
 
@@ -157,27 +136,9 @@ independent of model development and use.
 
 | Field | Value |
 |-------|-------|
-| Status | **FAIL** |
-| Score | 0.7800 |
+| Status | **PASS** |
+| Score | 0.9800 |
 | SR 11-7 Reference | Section II.B: Evaluation of Conceptual Soundness |
-| Failure Reason | 22% of EPE/notional ratios outside [0.001, 0.1] |
-
-**Validation Evidence:**
-
-```json
-{
-  "mean_epe_notional_ratio": 0.017477,
-  "min_ratio_observed": 0.0,
-  "max_ratio_observed": 0.077223,
-  "outlier_count": 11,
-  "outlier_pct": 0.22,
-  "bounds": [
-    0.001,
-    0.1
-  ],
-  "n_counterparties": 50
-}
-```
 
 **SR 11-7 Requirement:** Validation should assess whether the model design and construction are consistent with sound theory and judgment, and appropriate for the intended use. This includes review of model assumptions, mathematical construction, and theoretical basis.
 
@@ -186,23 +147,9 @@ independent of model development and use.
 | Field | Value |
 |-------|-------|
 | Status | **FAIL** |
-| Score | 0.8600 |
+| Score | 0.7400 |
 | SR 11-7 Reference | Section II.D: Outcomes Analysis and Backtesting |
-| Failure Reason | PFE breach rate 14.00% exceeds 10% threshold |
-
-**Validation Evidence:**
-
-```json
-{
-  "breach_rate": 0.14,
-  "n_breaches": 7,
-  "n_observations": 50,
-  "max_breach_rate": 0.1,
-  "mean_pfe": 599091.71,
-  "mean_realised": 72349.92,
-  "confidence_level": 0.95
-}
-```
+| Failure Reason | Backtest p-value below 0.05 |
 
 **SR 11-7 Requirement:** Model outcomes should be compared with actual outcomes to assess model accuracy and identify potential issues. Backtesting should be performed where feasible, with analysis of errors and systematic biases.
 
@@ -211,36 +158,8 @@ independent of model development and use.
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
-| Score | 0.8926 |
+| Score | 0.9200 |
 | SR 11-7 Reference | Section II.E: Sensitivity Analysis and Stress Testing |
-
-**Validation Evidence:**
-
-```json
-{
-  "pd_bump_pct": 50.0,
-  "mean_sensitivity": 0.8926,
-  "sensitivities": [
-    1.0091,
-    0.7494,
-    0.9193
-  ],
-  "base_cvas": [
-    5775.66,
-    11350.68,
-    469.41
-  ],
-  "shocked_cvas": [
-    8689.82,
-    15603.56,
-    685.18
-  ],
-  "bounds": [
-    0.1,
-    3.0
-  ]
-}
-```
 
 **SR 11-7 Requirement:** Validation should include comprehensive sensitivity analysis and stress testing to evaluate model behavior under a range of assumptions and scenarios, particularly adverse conditions.
 
@@ -249,19 +168,8 @@ independent of model development and use.
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
-| Score | 0.7752 |
+| Score | 0.8800 |
 | SR 11-7 Reference | Section II.B: Evaluation of Conceptual Soundness |
-
-**Validation Evidence:**
-
-```json
-{
-  "pd_exposure_correlation": -0.2248,
-  "max_correlation": 0.6,
-  "risk_level": "LOW",
-  "n_counterparties": 50
-}
-```
 
 **SR 11-7 Requirement:** Validation should assess whether the model design and construction are consistent with sound theory and judgment, and appropriate for the intended use. This includes review of model assumptions, mathematical construction, and theoretical basis.
 
@@ -269,53 +177,13 @@ independent of model development and use.
 
 | Field | Value |
 |-------|-------|
-| Status | **FAIL** |
-| Score | 0.6000 |
+| Status | **PASS** |
+| Score | 0.9500 |
 | SR 11-7 Reference | Section II.B: Evaluation of Conceptual Soundness |
-| Failure Reason | Exposure profile shape anomaly detected |
-
-**Validation Evidence:**
-
-```json
-{
-  "has_peak": false,
-  "peak_time_step": 0,
-  "coefficient_of_variation": 0.3074,
-  "not_flat": true,
-  "no_negatives": true,
-  "profile_length": 60,
-  "peak_ee": 449583.33,
-  "terminal_ee": 127748.66
-}
-```
 
 **SR 11-7 Requirement:** Validation should assess whether the model design and construction are consistent with sound theory and judgment, and appropriate for the intended use. This includes review of model assumptions, mathematical construction, and theoretical basis.
 
-### 4.7 ccr.CollateralEffectiveness
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.2836 |
-| SR 11-7 Reference | Section II.D: Outcomes Analysis and Backtesting |
-
-**Validation Evidence:**
-
-```json
-{
-  "mean_epe_collateralised": 70849.09,
-  "mean_epe_uncollateralised": 209868.45,
-  "epe_notional_ratio_coll": 0.014945,
-  "epe_notional_ratio_uncoll": 0.020862,
-  "effective_reduction_pct": 28.36,
-  "n_collateralised": 29,
-  "n_uncollateralised": 21
-}
-```
-
-**SR 11-7 Requirement:** Model outcomes should be compared with actual outcomes to assess model accuracy and identify potential issues. Backtesting should be performed where feasible, with analysis of errors and systematic biases.
-
-### 4.8 compliance.GovernanceCheck
+### 4.7 compliance.GovernanceCheck
 
 | Field | Value |
 |-------|-------|
@@ -323,46 +191,12 @@ independent of model development and use.
 | Score | 1.0000 |
 | SR 11-7 Reference | Section III.A: Model Risk Management Framework |
 
-**Validation Evidence:**
-
-```json
-{
-  "checks": {
-    "risk_tier_assigned": true,
-    "owner_designated": true,
-    "validation_frequency_set": true,
-    "use_case_documented": true,
-    "methodology_documented": true,
-    "version_controlled": true
-  },
-  "checks_passed": 6,
-  "checks_total": 6,
-  "standard": "cps230"
-}
-```
-
 **SR 11-7 Requirement:** Banks should have a sound model risk management framework that provides well-defined and consistent policies, procedures, and controls covering all aspects of the model risk management process.
 
 
-## 5. Validation Triggers (SR 11-7 Section II.C)
+## 5. Validation Triggers
 
-Per SR 11-7, models should be subject to ongoing monitoring with triggers
-for re-validation when material changes occur or performance degrades.
-
-### 5.1 Configured Triggers
-
-- **scheduled**: Quarterly scheduled re-validation
-- **breach**: PFE back-test breach rate exceeds 10%
-- **drift**: Monte Carlo output drift exceeds 15%
-- **materiality**: Portfolio notional or counterparty count changes > 20%
-- **regulatory**: APRA CPS 230 amendment or prudential guidance update
-
-### 5.2 Recent Trigger Events
-
-| Trigger Type | Timestamp | Severity | Description |
-|--------------|-----------|----------|-------------|
-| scheduled | N/A | N/A | N/A |
-| breach | N/A | N/A | N/A |
+No validation triggers configured for this model.
 
 ## 6. Findings and Recommendations
 
@@ -370,9 +204,7 @@ for re-validation when material changes occur or performance degrades.
 
 The following validation tests failed and require remediation:
 
-1. **ccr.EPEReasonableness** (SR 11-7 Section II.B): 22% of EPE/notional ratios outside [0.001, 0.1]
-2. **ccr.PFEBacktest** (SR 11-7 Section II.D): PFE breach rate 14.00% exceeds 10% threshold
-3. **ccr.ExposureProfileShape** (SR 11-7 Section II.B): Exposure profile shape anomaly detected
+1. **ccr.PFEBacktest** (SR 11-7 Section II.D): Backtest p-value below 0.05
 
 ### 6.2 Recommendations
 
@@ -405,7 +237,7 @@ validation findings and document any remediation actions.
 
 | Role | Name | Date |
 |------|------|------|
-| Lead Validator | [To be completed] | 2026-05-10 |
+| Lead Validator | [To be completed] | 2026-05-16 |
 | Independent Reviewer | [To be completed] | [Pending] |
 | Model Risk Manager | [To be completed] | [Pending] |
 
@@ -413,7 +245,7 @@ validation findings and document any remediation actions.
 
 | Role | Name | Date |
 |------|------|------|
-| Model Owner | market_risk_team | [Pending] |
+| Model Owner | ccr-team | [Pending] |
 | Business Line Head | [To be completed] | [Pending] |
 
 ### 7.3 Approval Status

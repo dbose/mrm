@@ -6,7 +6,7 @@
 |-------|-------|
 | **AI System Name** | credit_scorecard |
 | **Version** | 1.0.0 |
-| **Documentation Date** | 2026-05-10 08:30 UTC |
+| **Documentation Date** | 2026-05-16 05:28 UTC |
 | **Regulatory Framework** | EU AI Act Annex IV -- Technical Documentation for High-Risk AI Systems |
 | **Provider** | credit_risk_team |
 | **Risk Classification** | High-Risk AI System |
@@ -31,15 +31,15 @@ for the AI system **credit_scorecard** (v1.0.0).
 This AI system is classified as a **high-risk AI system** under Article 6 of the EU AI Act.
 Specific classification rationale: Probability of Default model for consumer credit
 
-### Conformity Assessment Status: **COMPLIANT**
+### Conformity Assessment Status: **NON-COMPLIANT**
 
 | Metric | Value |
 |--------|-------|
-| Technical Tests Executed | 8 |
-| Tests Passed | 8 |
-| Tests Failed | 0 |
-| Compliance Rate | 100.0% |
-| Overall Status | **PASS** |
+| Technical Tests Executed | 6 |
+| Tests Passed | 5 |
+| Tests Failed | 1 |
+| Compliance Rate | 83.3% |
+| Overall Status | **FAIL** |
 
 **Intended Purpose:** Probability of Default model for consumer credit
 
@@ -61,7 +61,7 @@ procedure based on internal control as defined in Annex VI.
 | Version | 1.0.0 |
 | Provider | credit_risk_team |
 | Intended Purpose | consumer_lending |
-| Date of Documentation | 2026-05-10 |
+| Date of Documentation | 2026-05-16 |
 
 ### 1.2 Intended Purpose
 
@@ -174,11 +174,11 @@ The AI system is capable of:
 
 | Metric | Expected Performance | Actual Performance |
 |--------|---------------------|-------------------|
-| Overall Accuracy | ≥ 70% | 84.00% |
-| ROC-AUC | ≥ 70% | 90.77% |
-| Gini Coefficient | ≥ 40% | 81.55% |
-| Precision | ≥ 65% | 83.60% |
-| Recall | ≥ 65% | 84.00% |
+| Overall Accuracy | ≥ 70% | N/A |
+| ROC-AUC | ≥ 70% | 84.00% |
+| Gini Coefficient | ≥ 40% | 55.00% |
+| Precision | ≥ 65% | N/A |
+| Recall | ≥ 65% | N/A |
 
 ### 3.4 Human Oversight Measures
 
@@ -257,13 +257,13 @@ validation evidence demonstrating compliance.
 | Annex IV Ref | Requirement | Status | Evidence |
 |--------------|-------------|--------|----------|
 | Annex IV.1 | General Description of the AI System | NOT ASSESSED | No tests mapped |
-| Annex IV.2 | Detailed Description of System Elements | NOT ASSESSED | No tests mapped |
+| Annex IV.2 | Detailed Description of System Elements | NON-COMPLIANT | tabular.MissingValues: PASS; tabular.OutlierDetection: FAIL |
 | Annex IV.3 | Monitoring, Functioning and Control of the AI System | NOT ASSESSED | No tests mapped |
-| Annex IV.4 | Risk Management System | NOT ASSESSED | No tests mapped |
-| Annex IV.5 | Changes to the AI System Throughout Its Lifecycle | NOT ASSESSED | No tests mapped |
+| Annex IV.4 | Risk Management System | COMPLIANT | compliance.GovernanceCheck: PASS |
+| Annex IV.5 | Changes to the AI System Throughout Its Lifecycle | COMPLIANT | tabular.DataDrift: PASS |
 | Annex IV.6 | Harmonised Standards and Common Specifications | NOT ASSESSED | No tests mapped |
 | Annex IV.7 | EU Declaration of Conformity | NOT ASSESSED | No tests mapped |
-| Annex IV.8 | Detailed Description of System Performance Assessment | COMPLIANT | model.Accuracy: PASS; model.ROCAUC: PASS; model.Gini: PASS; model.Precision: PASS; model.Recall: PASS |
+| Annex IV.8 | Detailed Description of System Performance Assessment | COMPLIANT | model.ROCAUC: PASS; model.Gini: PASS |
 | Annex IV.9 | Cybersecurity Measures | NOT ASSESSED | No tests mapped |
 
 ### 5.1 Compliance Summary
@@ -280,210 +280,66 @@ to assess the system's compliance.
 
 ## 6. Detailed Technical Test Results
 
-### 6.1 tabular_dataset.MissingValues
+### 6.1 tabular.MissingValues
+
+| Field | Value |
+|-------|-------|
+| Status | **PASS** |
+| Score | 0.0200 |
+| Annex IV Reference | Annex IV.2: Detailed Description of System Elements |
+
+**Annex IV Requirement:** A detailed description of the elements of the AI system and of the process for its development, including: (a) the methods and steps performed for the development of the AI system, including, where relevant, recourse to pre-trained systems or tools provided by third parties and how these have been used, integrated or modified by the provider; (b) the design specifications of the system, namely the general logic of the AI system and of the algorithms; (c) the description of the system architecture explaining how software components build on or feed into each other and integrate into the overall processing; the computational resources used to develop, train, test and validate the AI system; (d) where relevant, the data requirements in terms of datasheets describing the training methodologies and techniques and the training data sets used.
+
+### 6.2 tabular.OutlierDetection
+
+| Field | Value |
+|-------|-------|
+| Status | **FAIL** |
+| Score | 0.1700 |
+| Annex IV Reference | Annex IV.2: Detailed Description of System Elements |
+| Non-Conformity Reason | Outlier rate above 0.15 |
+
+**Annex IV Requirement:** A detailed description of the elements of the AI system and of the process for its development, including: (a) the methods and steps performed for the development of the AI system, including, where relevant, recourse to pre-trained systems or tools provided by third parties and how these have been used, integrated or modified by the provider; (b) the design specifications of the system, namely the general logic of the AI system and of the algorithms; (c) the description of the system architecture explaining how software components build on or feed into each other and integrate into the overall processing; the computational resources used to develop, train, test and validate the AI system; (d) where relevant, the data requirements in terms of datasheets describing the training methodologies and techniques and the training data sets used.
+
+### 6.3 tabular.DataDrift
+
+| Field | Value |
+|-------|-------|
+| Status | **PASS** |
+| Score | 0.0800 |
+| Annex IV Reference | Annex IV.5: Changes to the AI System Throughout Its Lifecycle |
+
+**Annex IV Requirement:** A description of any change made to the system through its lifecycle, including: changes to the system and its intended purpose; changes to the algorithms, data, training methodologies; and any change which substantially modifies the AI system or which may have an impact on the compliance with this Regulation.
+
+### 6.4 model.ROCAUC
+
+| Field | Value |
+|-------|-------|
+| Status | **PASS** |
+| Score | 0.8400 |
+| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
+
+**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
+
+### 6.5 model.Gini
+
+| Field | Value |
+|-------|-------|
+| Status | **PASS** |
+| Score | 0.5500 |
+| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
+
+**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
+
+### 6.6 compliance.GovernanceCheck
 
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
 | Score | 1.0000 |
-| Annex IV Reference | N/A: N/A |
+| Annex IV Reference | Annex IV.4: Risk Management System |
 
-**Technical Evidence:**
-
-```json
-{
-  "total_values": 6300,
-  "missing_count": 0,
-  "missing_ratio": 0.0,
-  "threshold": 0.05,
-  "columns_over_threshold": {}
-}
-```
-
-### 6.2 tabular_dataset.ClassImbalance
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.2867 |
-| Annex IV Reference | N/A: N/A |
-
-**Technical Evidence:**
-
-```json
-{
-  "class_counts": {
-    "0": 214,
-    "1": 86
-  },
-  "minority_ratio": 0.2866666666666667,
-  "min_ratio": 0.1,
-  "total_samples": 300
-}
-```
-
-### 6.3 tabular_dataset.OutlierDetection
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.9916 |
-| Annex IV Reference | N/A: N/A |
-
-**Technical Evidence:**
-
-```json
-{
-  "outlier_counts": {
-    "feature_0": 1,
-    "feature_1": 5,
-    "feature_2": 4,
-    "feature_3": 2,
-    "feature_4": 4,
-    "feature_5": 3,
-    "feature_6": 4,
-    "feature_7": 6,
-    "feature_8": 2,
-    "feature_9": 3,
-    "feature_10": 0,
-    "feature_11": 2,
-    "feature_12": 0,
-    "feature_13": 3,
-    "feature_14": 0,
-    "feature_15": 5,
-    "feature_16": 3,
-    "feature_17": 4,
-    "feature_18": 2,
-    "feature_19": 0,
-    "target": 0
-  },
-  "total_outliers": 53,
-  "outlier_ratio": 0.008412698412698413,
-  "threshold": 0.15,
-  "numeric_columns": [
-    "feature_0",
-    "feature_1",
-    "feature_2",
-    "feature_3",
-    "feature_4",
-    "feature_5",
-    "feature_6",
-    "feature_7",
-    "feature_8",
-    "feature_9",
-    "feature_10",
-    "feature_11",
-    "feature_12",
-    "feature_13",
-    "feature_14",
-    "feature_15",
-    "feature_16",
-    "feature_17",
-    "feature_18",
-    "feature_19",
-    "target"
-  ]
-}
-```
-
-### 6.4 model.Accuracy
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.8400 |
-| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "accuracy": 0.84,
-  "min_score": 0.7,
-  "num_samples": 300
-}
-```
-
-**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
-
-### 6.5 model.ROCAUC
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.9077 |
-| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "roc_auc": 0.9077374483807868,
-  "min_score": 0.7,
-  "num_samples": 300
-}
-```
-
-**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
-
-### 6.6 model.Gini
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.8155 |
-| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "gini": 0.8154748967615737,
-  "roc_auc": 0.9077374483807868,
-  "min_score": 0.4,
-  "num_samples": 300
-}
-```
-
-**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
-
-### 6.7 model.Precision
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.8360 |
-| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "precision": 0.8359821428571429,
-  "min_score": 0.65
-}
-```
-
-**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
-
-### 6.8 model.Recall
-
-| Field | Value |
-|-------|-------|
-| Status | **PASS** |
-| Score | 0.8400 |
-| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "recall": 0.84,
-  "min_score": 0.65
-}
-```
-
-**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
+**Annex IV Requirement:** A detailed description of the risk management system as referred to in Article 9, including: (a) the identification and analysis of the known and foreseeable risks to health, safety or fundamental rights; (b) the estimation and evaluation of the risks that may emerge when the AI system is used in accordance with its intended purpose and under conditions of reasonably foreseeable misuse; (c) the evaluation of other possibly arising risks based on the analysis of data gathered from the post-market monitoring system; (d) the adoption of suitable risk management measures as appropriate to address the specific risks.
 
 
 ## 7. System Performance Assessment (Annex IV.8)
@@ -567,8 +423,8 @@ This EU declaration of conformity is issued under the sole responsibility of the
 
 | Role | Name | Date |
 |------|------|------|
-| Provider Representative | [To be completed] | 2026-05-10 |
-| Technical Documentation Preparer | [To be completed] | 2026-05-10 |
+| Provider Representative | [To be completed] | 2026-05-16 |
+| Technical Documentation Preparer | [To be completed] | 2026-05-16 |
 | Conformity Assessment Reviewer | [To be completed] | [Pending] |
 
 ---
@@ -620,4 +476,4 @@ Annex IV of Regulation (EU) 2024/1689 on artificial intelligence (EU AI Act).*
 
 *Documentation Version: 1.0*
 
-*Last Updated: 2026-05-10*
+*Last Updated: 2026-05-16*

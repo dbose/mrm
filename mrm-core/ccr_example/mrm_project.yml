@@ -83,12 +83,21 @@ test_suites:
 # ============================================================================
 # Backend Configuration
 # ============================================================================
+# Declarative shape of every backend role. Host-, env-, and credential-
+# specific bindings live in profiles.yml (see dbt-style split).
 backends:
-  default: local
+  default_results:
+    type: local                # local | mlflow
 
-  local:
-    type: filesystem
-    path: ~/.mrm/data
+  default_evidence:
+    type: local                # local | s3_object_lock
+    retention_days: 2555       # 7-year regulator retention
+
+  default_replay:
+    type: local                # local | s3
+
+  root_signer:
+    type: local                # local | gpg | age | kms | cloud-hsm
 
 # ============================================================================
 # Validation Triggers (Global Defaults)
@@ -112,11 +121,9 @@ test_paths:
   - tests/custom
 
 catalogs:
+  # Declarative shape only -- host/token/catalog/schema are env-
+  # specific and live in profiles.yml under
+  # outputs.<target>.catalogs.databricks.
   databricks:
     type: databricks_unity
-    host: "{{ env_var('DATABRICKS_HOST') }}"
-    token: "{{ env_var('DATABRICKS_TOKEN') }}"
-    catalog: workspace
-    schema: default
     mlflow_registry: true
-    cache_ttl_seconds: 300

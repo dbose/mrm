@@ -1,13 +1,14 @@
 """Project configuration and management for MRM"""
 
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Mapping, Optional
 import logging
 from mrm.utils.yaml_utils import load_yaml, find_project_root, validate_project_config
 from mrm.backends.base import BackendAdapter
 from mrm.backends.local import LocalBackend
 from mrm.core.dag import ModelDAG
 from mrm.core.catalog import ModelCatalog
+from mrm.core.backend_resolver import ResolutionError, resolve as _resolve
 
 logger = logging.getLogger(__name__)
 
@@ -49,27 +50,86 @@ class Project:
         self._catalog: Optional[ModelCatalog] = None
     
     def _init_backend(self) -> BackendAdapter:
-        """Initialize backend based on profile configuration"""
-        target_config = self.profile_config.get('outputs', {}).get(self.target, {})
-        backend_type = target_config.get('backend', 'local')
-        
-        if backend_type == 'local':
-            backend_config = self.config.get('backends', {}).get('local', {})
-            return LocalBackend(**backend_config)
-        
-        elif backend_type == 'mlflow':
+        """Initialize the test-results backend.
+
+        Walks the unified resolution ladder via ``resolve_backend``
+        rather than reading project/profile dicts directly. Falls
+        back to the legacy single-key shape (``outputs.<target>.backend
+        = 'local'``) for backwards compatibility.
+        """
+        cfg = self.resolve_backend("default_results")
+        backend_type = cfg.get("type", "local")
+
+        if backend_type == "local":
+            params = {k: v for k, v in cfg.items() if k != "type"}
+            return LocalBackend(**params)
+
+        if backend_type == "mlflow":
             from mrm.backends.mlflow import MLflowBackend
-            
-            tracking_uri = target_config.get('tracking_uri')
-            experiment_name = target_config.get('experiment_name', 'mrm-validation')
-            
+
             return MLflowBackend(
-                tracking_uri=tracking_uri,
-                experiment_name=experiment_name
+                tracking_uri=cfg.get("tracking_uri"),
+                experiment_name=cfg.get("experiment_name", "mrm-validation"),
             )
-        
-        else:
-            raise ValueError(f"Unknown backend type: {backend_type}")
+
+        raise ValueError(f"Unknown backend type: {backend_type}")
+
+    # ------------------------------------------------------------------
+    # Unified config resolution surface
+    # ------------------------------------------------------------------
+
+    def resolve_backend(
+        self,
+        role: str,
+        cli_overrides: Optional[Mapping[str, Any]] = None,
+        required: bool = False,
+    ) -> Dict[str, Any]:
+        """Resolve a backend role through the full precedence ladder.
+
+        See ``mrm/core/backend_resolver.py`` for the exact ladder.
+        """
+        return _resolve(
+            project_cfg=self.config,
+            profile_cfg=self.profile_config,
+            target=self.target,
+            section="backends",
+            role=role,
+            cli_overrides=cli_overrides,
+            required=required,
+        )
+
+    def resolve_catalog(
+        self,
+        name: str,
+        cli_overrides: Optional[Mapping[str, Any]] = None,
+        required: bool = True,
+    ) -> Dict[str, Any]:
+        """Resolve a catalog binding through the full precedence ladder.
+
+        Catalogs default to ``required=True`` because they're a
+        load-bearing dependency that models ``ref()`` into; a typo'd
+        catalog name should fail loudly rather than silently.
+        """
+        return _resolve(
+            project_cfg=self.config,
+            profile_cfg=self.profile_config,
+            target=self.target,
+            section="catalogs",
+            role=name,
+            cli_overrides=cli_overrides,
+            required=required,
+        )
+
+    def declared_catalogs(self) -> List[str]:
+        """Return the names of catalogs declared at the project level.
+
+        Profile-only catalogs are intentionally not listed here -- they
+        are a valid pattern for env-specific catalogs, but the project
+        file is the source of truth for which catalogs the *project*
+        depends on.
+        """
+        block = self.config.get("catalogs", {}) or {}
+        return sorted(block.keys()) if isinstance(block, Mapping) else []
     
     @classmethod
     def load(cls, project_path: Optional[Path] = None, profile: str = "dev") -> "Project":
@@ -282,60 +342,64 @@ class Project:
                 self._dag.add_node(model['model']['name'])
     
     def _build_catalog(self):
-        """Build model catalog from configs"""
+        """Build model catalog from configs.
+
+        Catalogs declared in ``mrm_project.yml`` are required to have a
+        binding (host/token/catalog/schema) in the active target of
+        ``profiles.yml``. The resolver applies the dbt-style merge.
+        """
+        from mrm.core.references import ModelRef
+
         models = self.list_models()
-        # Build base catalog from project model configs
         self._catalog = ModelCatalog.from_project(models)
 
-        # Merge external catalogs configured in project config (optional)
-        try:
-            catalogs_cfg = self.config.get('catalogs', {})
-            for name, cfg in catalogs_cfg.items():
-                ctype = cfg.get('type')
-                if ctype == 'databricks_unity' or ctype == 'databricks_uc':
+        for name in self.declared_catalogs():
+            try:
+                cfg = self.resolve_catalog(name, required=True)
+            except ResolutionError as exc:
+                logger.warning("Catalog '%s' unresolved: %s", name, exc)
+                continue
+
+            ctype = cfg.get("type")
+            if ctype in ("databricks_unity", "databricks_uc"):
+                try:
+                    from mrm.core.catalog_backends.databricks_unity import (
+                        DatabricksUnityCatalog,
+                    )
+
+                    catalog_default = cfg.get("catalog")
+                    schema_default = cfg.get("schema")
+                    backend = DatabricksUnityCatalog(
+                        host=cfg.get("host"),
+                        token=cfg.get("token"),
+                        catalog=catalog_default,
+                        schema=schema_default,
+                        mlflow_registry=cfg.get("mlflow_registry", True),
+                        cache_ttl_seconds=cfg.get("cache_ttl_seconds", 300),
+                    )
                     try:
-                        from mrm.core.catalog_backends.databricks_unity import DatabricksUnityCatalog
-
-                        host = cfg.get('host')
-                        token = cfg.get('token')
-                        catalog_default = cfg.get('catalog')
-                        schema_default = cfg.get('schema')
-                        mlflow_registry = cfg.get('mlflow_registry', True)
-                        cache_ttl = cfg.get('cache_ttl_seconds', 300)
-
-                        backend = DatabricksUnityCatalog(
-                            host=host,
-                            token=token,
-                            catalog=catalog_default,
-                            schema=schema_default,
-                            mlflow_registry=mlflow_registry,
-                            cache_ttl_seconds=cache_ttl
+                        remote_models = backend.list_models(catalog_default, schema_default)
+                        for mname, meta in remote_models.items():
+                            model_ref = {
+                                "type": "databricks_uc",
+                                "catalog": catalog_default,
+                                "schema": schema_default,
+                                "model": mname,
+                                **(meta or {}),
+                            }
+                            self._catalog.register(mname, ModelRef.from_config(model_ref))
+                    except Exception as exc:
+                        logger.warning(
+                            "Could not list models from catalog '%s': %s", name, exc
                         )
+                except Exception as exc:
+                    logger.warning(
+                        "Could not initialize catalog backend '%s': %s", name, exc
+                    )
+            else:
+                logger.debug("Skipping unknown catalog type: %s", ctype)
 
-                        # Register discovered models into central ModelCatalog
-                        try:
-                            remote_models = backend.list_models(catalog_default, schema_default)
-                            for mname, meta in remote_models.items():
-                                # Build a ModelRef-like dict entry
-                                model_ref = {
-                                    'type': 'databricks_uc',
-                                    'catalog': catalog_default,
-                                    'schema': schema_default,
-                                    'model': mname,
-                                    **(meta or {})
-                                }
-                                self._catalog.register(mname, ModelRef.from_config(model_ref))
-                        except Exception as e:
-                            logger.warning(f"Could not list models from catalog '{name}': {e}")
-
-                    except Exception as e:
-                        logger.warning(f"Could not initialize catalog backend '{name}': {e}")
-                else:
-                    logger.debug(f"Skipping unknown catalog type: {ctype}")
-        except Exception:
-            # Ignore catalog loading errors but log
-            logger.debug("No external catalogs configured or failed to load them")
-        logger.info(f"Built catalog with {len(self._catalog.models)} models")
+        logger.info("Built catalog with %d models", len(self._catalog.models))
     
     def select_models_graph(
         self,

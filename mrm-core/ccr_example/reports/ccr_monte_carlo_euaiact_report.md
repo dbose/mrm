@@ -6,11 +6,11 @@
 |-------|-------|
 | **AI System Name** | ccr_monte_carlo |
 | **Version** | 1.0.0 |
-| **Documentation Date** | 2026-05-10 08:27 UTC |
+| **Documentation Date** | 2026-05-16 05:28 UTC |
 | **Regulatory Framework** | EU AI Act Annex IV -- Technical Documentation for High-Risk AI Systems |
-| **Provider** | market_risk_team |
+| **Provider** | ccr-team |
 | **Risk Classification** | High-Risk AI System |
-| **Intended Purpose** | counterparty_credit_risk |
+| **Intended Purpose** | Counterparty credit risk exposure |
 
 ---
 
@@ -29,23 +29,21 @@ for the AI system **ccr_monte_carlo** (v1.0.0).
 ### System Classification
 
 This AI system is classified as a **high-risk AI system** under Article 6 of the EU AI Act.
-Specific classification rationale: Vanilla Monte Carlo simulation engine for Counterparty Credit Risk. Simulates interest rate swap mark-to-market paths under Vasicek rate dynamics to compute EPE, PFE, CVA, and EAD for OTC derivative portfolios.
-
+Specific classification rationale: N/A
 
 ### Conformity Assessment Status: **NON-COMPLIANT**
 
 | Metric | Value |
 |--------|-------|
-| Technical Tests Executed | 8 |
-| Tests Passed | 5 |
-| Tests Failed | 3 |
-| Compliance Rate | 62.5% |
+| Technical Tests Executed | 7 |
+| Tests Passed | 6 |
+| Tests Failed | 1 |
+| Compliance Rate | 85.7% |
 | Overall Status | **FAIL** |
 
-**Intended Purpose:** Vanilla Monte Carlo simulation engine for Counterparty Credit Risk. Simulates interest rate swap mark-to-market paths under Vasicek rate dynamics to compute EPE, PFE, CVA, and EAD for OTC derivative portfolios.
+**Intended Purpose:** N/A
 
-
-**Methodology:** monte_carlo_simulation
+**Methodology:** Monte Carlo simulation
 
 ### Conformity Assessment
 
@@ -61,14 +59,13 @@ procedure based on internal control as defined in Annex VI.
 |-------|-------|
 | System Name | ccr_monte_carlo |
 | Version | 1.0.0 |
-| Provider | market_risk_team |
-| Intended Purpose | counterparty_credit_risk |
-| Date of Documentation | 2026-05-10 |
+| Provider | ccr-team |
+| Intended Purpose | Counterparty credit risk exposure |
+| Date of Documentation | 2026-05-16 |
 
 ### 1.2 Intended Purpose
 
-**Primary Use Case:** Vanilla Monte Carlo simulation engine for Counterparty Credit Risk. Simulates interest rate swap mark-to-market paths under Vasicek rate dynamics to compute EPE, PFE, CVA, and EAD for OTC derivative portfolios.
-
+**Primary Use Case:** N/A
 
 **Target Users:** Financial institutions, credit risk teams
 
@@ -103,7 +100,7 @@ Version updates are managed through:
 
 ### 2.1 Development Methodology
 
-**Methodology:** monte_carlo_simulation
+**Methodology:** Monte Carlo simulation
 
 **Development Steps:**
 1. Data collection and preparation
@@ -116,9 +113,9 @@ Version updates are managed through:
 
 ### 2.2 System Architecture
 
-**Model Type:** monte_carlo_simulation
+**Model Type:** Monte Carlo simulation
 
-**Architecture Description:** The AI system is implemented as a monte_carlo_simulation 
+**Architecture Description:** The AI system is implemented as a Monte Carlo simulation 
 model that processes structured input features to generate predictions. The system follows standard 
 ML pipeline architecture with data preprocessing, feature transformation, model inference, and 
 output post-processing stages.
@@ -127,8 +124,7 @@ output post-processing stages.
 
 #### Training Data
 
-- **training**: csv (data/training.csv)
-- **validation**: csv (data/validation.csv)
+No datasets documented
 
 **Data Quality Requirements:**
 - Completeness: < 5% missing values per feature
@@ -266,7 +262,7 @@ validation evidence demonstrating compliance.
 | Annex IV.5 | Changes to the AI System Throughout Its Lifecycle | NOT ASSESSED | No tests mapped |
 | Annex IV.6 | Harmonised Standards and Common Specifications | NOT ASSESSED | No tests mapped |
 | Annex IV.7 | EU Declaration of Conformity | NOT ASSESSED | No tests mapped |
-| Annex IV.8 | Detailed Description of System Performance Assessment | NON-COMPLIANT | ccr.MCConvergence: PASS; ccr.EPEReasonableness: FAIL; ccr.PFEBacktest: FAIL; ccr.ExposureProfileShape: FAIL; ccr.CollateralEffectiveness: PASS |
+| Annex IV.8 | Detailed Description of System Performance Assessment | NON-COMPLIANT | ccr.MCConvergence: PASS; ccr.EPEReasonableness: PASS; ccr.PFEBacktest: FAIL; ccr.ExposureProfileShape: PASS |
 | Annex IV.9 | Cybersecurity Measures | NOT ASSESSED | No tests mapped |
 
 ### 5.1 Compliance Summary
@@ -288,20 +284,8 @@ to assess the system's compliance.
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
-| Score | 0.9720 |
+| Score | 0.9991 |
 | Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "epe_sample_a": 258694.90280232587,
-  "epe_sample_b": 266051.82981546986,
-  "relative_difference": 0.02804,
-  "threshold": 0.05,
-  "n_simulations": 5000
-}
-```
 
 **Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
 
@@ -309,27 +293,9 @@ to assess the system's compliance.
 
 | Field | Value |
 |-------|-------|
-| Status | **FAIL** |
-| Score | 0.7800 |
+| Status | **PASS** |
+| Score | 0.9800 |
 | Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-| Non-Conformity Reason | 22% of EPE/notional ratios outside [0.001, 0.1] |
-
-**Technical Evidence:**
-
-```json
-{
-  "mean_epe_notional_ratio": 0.017477,
-  "min_ratio_observed": 0.0,
-  "max_ratio_observed": 0.077223,
-  "outlier_count": 11,
-  "outlier_pct": 0.22,
-  "bounds": [
-    0.001,
-    0.1
-  ],
-  "n_counterparties": 50
-}
-```
 
 **Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
 
@@ -338,23 +304,9 @@ to assess the system's compliance.
 | Field | Value |
 |-------|-------|
 | Status | **FAIL** |
-| Score | 0.8600 |
+| Score | 0.7400 |
 | Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-| Non-Conformity Reason | PFE breach rate 14.00% exceeds 10% threshold |
-
-**Technical Evidence:**
-
-```json
-{
-  "breach_rate": 0.14,
-  "n_breaches": 7,
-  "n_observations": 50,
-  "max_breach_rate": 0.1,
-  "mean_pfe": 599091.71,
-  "mean_realised": 72349.92,
-  "confidence_level": 0.95
-}
-```
+| Non-Conformity Reason | Backtest p-value below 0.05 |
 
 **Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
 
@@ -363,36 +315,8 @@ to assess the system's compliance.
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
-| Score | 0.8926 |
+| Score | 0.9200 |
 | Annex IV Reference | Annex IV.3: Monitoring, Functioning and Control of the AI System |
-
-**Technical Evidence:**
-
-```json
-{
-  "pd_bump_pct": 50.0,
-  "mean_sensitivity": 0.8926,
-  "sensitivities": [
-    1.0091,
-    0.7494,
-    0.9193
-  ],
-  "base_cvas": [
-    5775.66,
-    11350.68,
-    469.41
-  ],
-  "shocked_cvas": [
-    8689.82,
-    15603.56,
-    685.18
-  ],
-  "bounds": [
-    0.1,
-    3.0
-  ]
-}
-```
 
 **Annex IV Requirement:** Detailed information about the monitoring, functioning and control of the AI system, in particular with regard to: its capabilities and limitations in performance, including the degrees of accuracy for specific persons or groups of persons on which the system is intended to be used and the overall expected level of accuracy in relation to its intended purpose; the foreseeable circumstances which may lead to risks to the health and safety or fundamental rights; and the human oversight measures needed.
 
@@ -401,19 +325,8 @@ to assess the system's compliance.
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
-| Score | 0.7752 |
+| Score | 0.8800 |
 | Annex IV Reference | Annex IV.4: Risk Management System |
-
-**Technical Evidence:**
-
-```json
-{
-  "pd_exposure_correlation": -0.2248,
-  "max_correlation": 0.6,
-  "risk_level": "LOW",
-  "n_counterparties": 50
-}
-```
 
 **Annex IV Requirement:** A detailed description of the risk management system as referred to in Article 9, including: (a) the identification and analysis of the known and foreseeable risks to health, safety or fundamental rights; (b) the estimation and evaluation of the risks that may emerge when the AI system is used in accordance with its intended purpose and under conditions of reasonably foreseeable misuse; (c) the evaluation of other possibly arising risks based on the analysis of data gathered from the post-market monitoring system; (d) the adoption of suitable risk management measures as appropriate to address the specific risks.
 
@@ -421,77 +334,19 @@ to assess the system's compliance.
 
 | Field | Value |
 |-------|-------|
-| Status | **FAIL** |
-| Score | 0.6000 |
-| Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-| Non-Conformity Reason | Exposure profile shape anomaly detected |
-
-**Technical Evidence:**
-
-```json
-{
-  "has_peak": false,
-  "peak_time_step": 0,
-  "coefficient_of_variation": 0.3074,
-  "not_flat": true,
-  "no_negatives": true,
-  "profile_length": 60,
-  "peak_ee": 449583.33,
-  "terminal_ee": 127748.66
-}
-```
-
-**Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
-
-### 6.7 ccr.CollateralEffectiveness
-
-| Field | Value |
-|-------|-------|
 | Status | **PASS** |
-| Score | 0.2836 |
+| Score | 0.9500 |
 | Annex IV Reference | Annex IV.8: Detailed Description of System Performance Assessment |
-
-**Technical Evidence:**
-
-```json
-{
-  "mean_epe_collateralised": 70849.09,
-  "mean_epe_uncollateralised": 209868.45,
-  "epe_notional_ratio_coll": 0.014945,
-  "epe_notional_ratio_uncoll": 0.020862,
-  "effective_reduction_pct": 28.36,
-  "n_collateralised": 29,
-  "n_uncollateralised": 21
-}
-```
 
 **Annex IV Requirement:** A detailed description of the system for assessment of the AI system performance in the post-market phase, including: validation and testing procedures; metrics used to measure accuracy, robustness, cybersecurity and compliance with other requirements; identification of any known limitations regarding the AI system's performance; and any other relevant assessment of the AI system's performance.
 
-### 6.8 compliance.GovernanceCheck
+### 6.7 compliance.GovernanceCheck
 
 | Field | Value |
 |-------|-------|
 | Status | **PASS** |
 | Score | 1.0000 |
 | Annex IV Reference | Annex IV.4: Risk Management System |
-
-**Technical Evidence:**
-
-```json
-{
-  "checks": {
-    "risk_tier_assigned": true,
-    "owner_designated": true,
-    "validation_frequency_set": true,
-    "use_case_documented": true,
-    "methodology_documented": true,
-    "version_controlled": true
-  },
-  "checks_passed": 6,
-  "checks_total": 6,
-  "standard": "cps230"
-}
-```
 
 **Annex IV Requirement:** A detailed description of the risk management system as referred to in Article 9, including: (a) the identification and analysis of the known and foreseeable risks to health, safety or fundamental rights; (b) the estimation and evaluation of the risks that may emerge when the AI system is used in accordance with its intended purpose and under conditions of reasonably foreseeable misuse; (c) the evaluation of other possibly arising risks based on the analysis of data gathered from the post-market monitoring system; (d) the adoption of suitable risk management measures as appropriate to address the specific risks.
 
@@ -554,7 +409,7 @@ The system is assessed using the following standard metrics for classification m
 
 This EU declaration of conformity is issued under the sole responsibility of the provider.
 
-**Provider:** market_risk_team
+**Provider:** ccr-team
 
 **AI System:** ccr_monte_carlo version 1.0.0
 
@@ -577,8 +432,8 @@ This EU declaration of conformity is issued under the sole responsibility of the
 
 | Role | Name | Date |
 |------|------|------|
-| Provider Representative | [To be completed] | 2026-05-10 |
-| Technical Documentation Preparer | [To be completed] | 2026-05-10 |
+| Provider Representative | [To be completed] | 2026-05-16 |
+| Technical Documentation Preparer | [To be completed] | 2026-05-16 |
 | Conformity Assessment Reviewer | [To be completed] | [Pending] |
 
 ---
@@ -630,4 +485,4 @@ Annex IV of Regulation (EU) 2024/1689 on artificial intelligence (EU AI Act).*
 
 *Documentation Version: 1.0*
 
-*Last Updated: 2026-05-10*
+*Last Updated: 2026-05-16*

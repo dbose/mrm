@@ -1,0 +1,6 @@
+{
+  "kind": "positive",
+  "summary": "3-event chain with default session-key derivation",
+  "epoch": "2026-05-01",
+  "expected_root_hash": "f4e24428fea7cba3524fbfa33bea22e4cc6d12a03c58f6e4273d7d94f6d4bf40"
+}

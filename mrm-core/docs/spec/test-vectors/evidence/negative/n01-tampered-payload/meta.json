@@ -1,0 +1,5 @@
+{
+  "kind": "negative",
+  "reason": "second event's payload_hash was changed -- HMAC must fail",
+  "epoch": "2026-05-01"
+}

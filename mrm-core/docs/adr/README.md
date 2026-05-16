@@ -29,6 +29,7 @@ convention.
 | [0003](0003-replay-as-first-class-primitive.md) | Decision Replay as a first-class primitive | Accepted |
 | [0004](0004-otlp-wire-format-for-replay.md) | OTLP/HTTP-JSON wire format for replay export | Accepted |
 | [0005](0005-oss-vs-cloud-split.md) | OSS/Cloud feature split mirrors dbt-core / dbt Cloud | Accepted |
+| [0006](0006-signer-plugpoint-and-hsm-tiering.md) | Signer plug-point and HSM tier line | Accepted |
 
 ## Writing a new ADR
 

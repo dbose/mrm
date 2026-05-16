@@ -22,6 +22,13 @@ class ComplianceRegistry:
 
     def __init__(self):
         self._standards: Dict[str, Type[ComplianceStandard]] = {}
+        # Aliases map an alternate name to a canonical standard name.
+        # Used to soften historical naming inconsistencies (e.g.
+        # ``eu_ai_act`` -> ``euaiact``) without breaking existing code.
+        self._aliases: Dict[str, str] = {}
+        # Track which aliases have been warned about so we only nag
+        # once per process.
+        self._aliases_warned: set = set()
         self._loaded_modules: set = set()
 
     # ------------------------------------------------------------------
@@ -45,6 +52,18 @@ class ComplianceRegistry:
         logger.debug(f"Registered compliance standard: {standard_class.name}")
         return standard_class
 
+    def register_alias(self, alias: str, canonical: str) -> None:
+        """Register ``alias`` as a deprecated alternate name for
+        ``canonical``.
+
+        Looking up ``alias`` via ``get()`` will succeed and return the
+        canonical class, but emit a one-shot deprecation warning so
+        users migrate.
+        """
+        if alias == canonical:
+            return
+        self._aliases[alias] = canonical
+
     # ------------------------------------------------------------------
     # Lookup
     # ------------------------------------------------------------------
@@ -52,18 +71,39 @@ class ComplianceRegistry:
     def get(self, standard_name: str) -> Type[ComplianceStandard]:
         """Get a standard class by short name.
 
-        Tries dynamic loading on miss (builtin → entry-points).
+        Tries dynamic loading on miss (builtin → entry-points). Honors
+        registered aliases with a one-shot deprecation warning.
         """
-        if standard_name not in self._standards:
-            self._try_load_standard(standard_name)
+        # Direct hit -- happy path.
+        if standard_name in self._standards:
+            return self._standards[standard_name]
 
-        if standard_name not in self._standards:
-            available = ", ".join(self.list_standards()) or "(none loaded)"
-            raise KeyError(
-                f"Compliance standard '{standard_name}' not found. "
-                f"Available: {available}"
-            )
-        return self._standards[standard_name]
+        # Alias hit -- warn once, then resolve to canonical.
+        if standard_name in self._aliases:
+            canonical = self._aliases[standard_name]
+            if standard_name not in self._aliases_warned:
+                self._aliases_warned.add(standard_name)
+                logger.warning(
+                    "Compliance standard alias '%s' is deprecated; "
+                    "use '%s' instead.",
+                    standard_name, canonical,
+                )
+            # Recurse to handle alias-of-alias defensively.
+            return self.get(canonical)
+
+        # Try dynamic loading then re-check (including aliases registered
+        # during module import).
+        self._try_load_standard(standard_name)
+        if standard_name in self._standards:
+            return self._standards[standard_name]
+        if standard_name in self._aliases:
+            return self.get(standard_name)
+
+        available = ", ".join(self.list_standards()) or "(none loaded)"
+        raise KeyError(
+            f"Compliance standard '{standard_name}' not found. "
+            f"Available: {available}"
+        )
 
     def list_standards(self, jurisdiction: Optional[str] = None) -> List[str]:
         """List registered standard names, optionally filtered."""
@@ -178,3 +218,22 @@ def register_standard(standard_class: Type[ComplianceStandard]):
             ...
     """
     return compliance_registry.register(standard_class)
+
+
+def register_alias(alias: str, canonical: str) -> None:
+    """Module-level shortcut for :py:meth:`ComplianceRegistry.register_alias`."""
+    compliance_registry.register_alias(alias, canonical)
+
+
+# ------------------------------------------------------------------
+# Compatibility aliases for two historically misnamed bundled
+# standards. STRATEGY.md and the README always referenced these in
+# the snake_case form (``eu_ai_act`` / ``osfi_e23``); the bundled
+# class registers itself under a compact name (``euaiact`` /
+# ``osfie23``). Both forms resolve; the snake_case form emits a
+# one-shot deprecation warning. A future major version will drop the
+# warning and the compact form may be retired entirely.
+# ------------------------------------------------------------------
+
+register_alias("eu_ai_act", "euaiact")
+register_alias("osfi_e23", "osfie23")

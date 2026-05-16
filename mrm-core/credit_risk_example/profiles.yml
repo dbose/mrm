@@ -1,10 +1,48 @@
-# MRM Profile Configuration
+# MRM Profile Configuration -- environment-specific bindings.
 mrm:
+  target: dev
   outputs:
     dev:
-      backend: local
-      
+      backends:
+        default_results:
+          type: local
+          path: ~/.mrm/data/credit_risk_dev
+        default_evidence:
+          type: local
+        default_replay:
+          type: local
+        root_signer:
+          type: local
+          key_path: ~/.mrm/keys/credit_risk_dev_root.key
+      catalogs:
+        databricks:
+          host: "{{ env_var('DATABRICKS_HOST_DEV') }}"
+          token: "{{ env_var('DATABRICKS_TOKEN_DEV') }}"
+          catalog: workspace_dev
+          schema: credit_sandbox
+          cache_ttl_seconds: 60
+
     prod:
-      backend: local
-      
-  target: dev
+      backends:
+        default_results:
+          type: mlflow
+          tracking_uri: "{{ env_var('MLFLOW_TRACKING_URI') }}"
+          experiment_name: credit-risk-validation-prod
+        default_evidence:
+          type: s3_object_lock
+          bucket: bank-credit-evidence-prod
+          region: ap-southeast-2
+        default_replay:
+          type: s3
+          bucket: bank-credit-replay-prod
+          region: ap-southeast-2
+        root_signer:
+          type: kms
+          key_uri: aws-kms://ap-southeast-2/alias/credit-risk-root-prod
+      catalogs:
+        databricks:
+          host: "{{ env_var('DATABRICKS_HOST_PROD') }}"
+          token: "{{ env_var('DATABRICKS_TOKEN_PROD') }}"
+          catalog: workspace_prod
+          schema: credit_gold
+          cache_ttl_seconds: 600
