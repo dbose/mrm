@@ -17,3 +17,4 @@ venv/
 *.csv
 *.parquet
 *.db
+CLAUDE.md

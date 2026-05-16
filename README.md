@@ -1,812 +1,443 @@
-# MRM Core
+# `mrm-core`
 
-**Open Source Model Risk Management CLI Framework**
+> **dbt for Model Risk Management — with replay by default.**
+>
+> A declarative, version-controlled, plugin-extensible CLI for validating
+> traditional, AI, and GenAI models against regulator-shaped standards.
+> Every model invocation is captured as a tamper-evident, hash-chained,
+> OTLP-exportable `DecisionRecord`.
 
-A dbt-inspired command-line tool for automating model validation, documentation, and risk management workflows in financial services.
-
----
-
-## What's Included
-
-**Core Framework** (`mrm-core/`)
-- Complete MRM CLI with Python
-- 30+ built-in validation tests (tabular, CCR, GenAI compliance)
-- dbt-style workflows (DAG, ref(), graph operators)
-- Pluggable multi-standard compliance framework (4 jurisdictions: AU/US/EU/CA)
-- Validation trigger engine for ongoing monitoring
-- **FULLY OPERATIONAL: LLM endpoint adapters** (OpenAI, Anthropic, Bedrock, Databricks, via LiteLLM)
-- **FULLY OPERATIONAL: GenAI test suite** (14 tests: hallucination, bias, robustness, PII, drift, cost/latency)
-- **FULLY OPERATIONAL: RAG validation** (FAISS retrieval + LLM generation testing)
-- Databricks Unity Catalog + MLflow integration
-- HuggingFace Hub support
-- Worked examples: CCR Monte Carlo, Credit Risk, **RAG Customer Service (GenAI)**
+[![Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](mrm-core/LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](mrm-core/pyproject.toml)
+[![Spec PRD-2](https://img.shields.io/badge/spec-PRD--2-orange.svg)](mrm-core/docs/spec/README.md)
+[![Jurisdictions](https://img.shields.io/badge/jurisdictions-AU%20%E2%80%A2%20US%20%E2%80%A2%20EU%20%E2%80%A2%20CA-green.svg)](mrm-core/docs/CROSSWALK.md)
 
 ---
 
-## Features
+## Why this exists
 
-### dbt-Style Workflows
+Regulators (Fed, APRA, OSFI, EU AI Office) now expect financial
+institutions to prove **how every model decision was made, on demand,
+across a multi-year retention window**. Today that proof lives in
+Excel, SharePoint, and screenshots stapled into GRC suites. That
+shape does not survive the 2026–2027 regulatory wave:
 
-- **DAG Management** - Model dependencies with `depends_on`
-- **ref()** - Reference models by name
-- **Graph Operators** - `+model+`, `model+`, `+model`
-- **Topological Sort** - Automatic dependency ordering
-- **Parallel Execution** - Run independent models concurrently
+| Date | Event |
+|---|---|
+| 1 Jul 2025 | APRA CPS 230 fully effective |
+| 30 Apr 2026 | APRA industry-wide AI letter + CPS 230 amendments |
+| 2 Aug 2026 | EU AI Act fully applicable |
+| 2026–2027 | Fed SR 11-7 → **SR 26-2** transition (AI activity logging mandate) |
+| 1 May 2027 | OSFI E-23 effective (expanded to all FRFIs incl. insurers) |
+| 2 Aug 2027 | EU AI Act high-risk obligations (embedded systems) |
 
-### Model Sources
-
-- **Local Files** - pickle, joblib
-- **Python Classes** - Import and instantiate
-- **MLflow** - Model registry integration
-- **HuggingFace** - Direct Hub integration
-- **S3/Cloud** - Cloud storage support
-- **Model References** - ref() to other models
-- **Catalogs** - Internal model registries
-
-### Supported Model Types
-
-mrm works with traditional ML, deep learning, and GenAI models via MLflow integration, native wrappers, or LLM API endpoints:
-
-| Framework | Integration Method | Documentation |
-|-----------|-------------------|---------------|
-| **Scikit-Learn** | Native (pickle/joblib) or MLflow sklearn flavor | [Guide](mrm-core/docs/framework_guides/sklearn.md) |
-| **PyTorch** | MLflow pytorch flavor (recommended) or custom wrapper | [Guide](mrm-core/docs/framework_guides/pytorch.md) |
-| **TensorFlow/Keras** | MLflow tensorflow flavor or SavedModel | [Guide](mrm-core/docs/framework_guides/tensorflow.md) |
-| **XGBoost / LightGBM** | MLflow xgboost/lightgbm flavors | See sklearn guide |
-| **LLM Endpoints** | 100+ providers via **LiteLLM** (OpenAI, Anthropic, Bedrock, Azure, Cohere, etc.) | [GenAI Example](mrm-core/genai_example/README.md) |
-| **RAG Systems** | FAISS + sentence-transformers integration | [GenAI Example](mrm-core/genai_example/README.md) |
-| **Custom Models** | Implement `predict()` interface | [Guide](mrm-core/docs/framework_guides/custom_wrappers.md) |
-| **APIs / Endpoints** | Wrap REST/gRPC endpoints | See custom wrappers guide |
-| **Legacy Systems** | Call SAS/SPSS/R scripts | See custom wrappers guide |
-
-**MLflow is the recommended integration path for traditional ML/DL** — it provides version tracking, experiment management, and unified interfaces across frameworks. Works locally (file-based tracking) or with remote servers.
-**Validated with Claude Sonnet 4.6** - full end-to-end testing complete. Install with: `pip install litellm anthropic sentence-transformers faiss-cpu`
-
-See the [GenAI RAG Example](mrm-core/genai_example/) for a complete worked example with:
-- RAG pipeline validation (FAISS + sentence-transformers)
-- Real LLM API calls (tested with Anthropic Claude)
-- 2 operational tests: `LatencyBound` (P95 < 10s), `CostBound` (< $0.10/query)
-- Compliance reports: CPS 230, EU AI Act, SR 11-7
-- Evidence packets with hash chains
-**GenAI Tests (14 tests across 7 categories) - VALIDATED WITH CLAUDE SONNET 4.6:**
-  - **Hallucination & Factual Accuracy** - `FactualAccuracy`, `HallucinationRate`
-  - **Bias & Fairness** - `OutputBias`, `PromptBias`, `DemographicParity`
-  - **Robustness & Adversarial** - `PromptInjection`, `JailbreakResistance`, `AdversarialPerturbation`
-  - **Toxicity & Safety** - `ToxicityRate`, `SafetyClassifier`
-  - **Drift & Consistency** - `OutputConsistency`, `SemanticDrift` (with frouros integration)
-  - **PII Leakage** - `PIIDetection` (using Microsoft Presidio)
-  - **Operational Risk** - `LatencyBound` **TESTED**, `CostBound` **TESTED**
-    - Current validation: P95 latency 4.5s (< 10s threshold), $0.02/query (< $0.10 limit)
-  - Hallucination & Factual Accuracy - `FactualAccuracy`, `HallucinationRate`
-  - Bias & Fairness - `OutputBias`, `PromptBias`, `DemographicParity`
-  - Robustness & Adversarial - `PromptInjection`, `JailbreakResistance`, `AdversarialPerturbation`
-  - Toxicity & Safety - `ToxicityRate`, `SafetyClassifier`
-  - Drift & Consistency - `OutputConsistency`, `SemanticDrift` (with frouros integration)
-  - PII Leakage - `PIIDetection` (using Microsoft Presidio)
-  - Operational Risk - `LatencyBound`, `CostBound`
-- **Compliance Tests** - GovernanceCheck (pluggable per-standard)
-- **Custom Tests** - Easy plugin system with `@register_test` decorator
-- **Test Suites** - Reusable test collections
-- **Parallel Execution** - Multi-threaded test runner
-
-### Pluggable Compliance Framework
-
-Multi-standard regulatory compliance with three-tier plugin discovery:
-
-| Tier | Mechanism | Example |
-|------|-----------|---------|
-| Bundled | Ships with MRM | CPS 230 (AU), SR 11-7 (US), EU AI Act (EU), OSFI E-23 (CA) |
-| External pip package | `mrm.compliance` entry point | `pip install mrm-osfi-e23` |
-| Custom local | `compliance_paths` in project YAML | `compliance/custom/my_std.py` |
-
-- **ComplianceStandard ABC** - Abstract base for regulatory standards
-- **ComplianceRegistry** - Decorator-based discovery (`@register_standard`)
-- **Paragraph mapping** - Map tests to regulatory paragraphs with evidence
-- **Cross-standard crosswalk** - Map requirements across jurisdictions (AU/US/EU/CA)
-- **Report generation** - Per-standard compliance reports via `mrm docs generate`
-- **Governance checks** - Automated checks loaded from each standard's definition
-- **Backward compatibility** - Old configs and imports continue to work with deprecation warnings
-
-**Bundled standards:**
-- **APRA CPS 230** (Operational Risk Management, Australia)
-- **Federal Reserve SR 11-7** (Supervisory Guidance on Model Risk Management, United States)
-- **EU AI Act Annex IV** (Technical Documentation for High-Risk AI Systems, European Union)
-- **OSFI E-23** (Enterprise-Wide Model Risk Management, Canada)
-
-### Validation Trigger Engine
-
-Automated triggers for re-validation based on regulatory and operational conditions:
-
-| Trigger Type | Description |
-|-------------|-------------|
-| SCHEDULED | Calendar-based (quarterly, semi-annual, annual) |
-| DRIFT | Data/model drift exceeds threshold |
-| BREACH | Back-test breach rate exceeds limit |
-| MATERIALITY | Portfolio notional or counterparty count changes |
-| REGULATORY | Regulation or policy change mandates re-validation |
-| MANUAL | Ad-hoc trigger by model owner |
-
-- Trigger lifecycle: `active` -> `fired` -> `acknowledged` -> `resolved`
-- JSON-persisted event log with evidence
-- CLI management: `mrm triggers check`, `mrm triggers list`, `mrm triggers resolve`
-
-### Evidence Vault — Immutable Audit Trail
-
-Store validation results as immutable, hash-chained evidence packets for regulatory audit:
-
-| Feature | Description |
-|---------|-------------|
-| **Hash chain** | Each packet references prior packet's hash, creating tamper-evident chain |
-| **Content hashing** | SHA-256 hash of all packet contents for integrity verification |
-| **Model artifact hash** | SHA-256 hash of model file ensures artifact hasn't changed |
-| **Compliance mappings** | Embedded regulatory paragraph mappings from all standards |
-| **Optional GPG signing** | Non-repudiation via GPG signatures |
-| **Pluggable backends** | Local (dev), S3 Object Lock (production SEC 17a-4 compliant) |
-
-**Two backends:**
-
-| Backend | Use Case | Immutability |
-|---------|----------|--------------|
-| **Local filesystem** | Dev/testing only | **NOT REGULATORY COMPLIANT** — files can be deleted |
-| **S3 Object Lock** | Production | **SEC 17a-4 compliant** — Compliance mode, Cohasset-assessed |
-
-CLI commands:
-```bash
-# Freeze validation results as immutable packet
-mrm evidence freeze ccr_monte_carlo --backend local
-mrm evidence freeze ccr_monte_carlo --backend s3 --bucket my-evidence --retention 2555
-
-# Verify packet integrity and hash chain
-mrm evidence verify file:///path/to/packet#id
-mrm evidence verify s3://bucket/evidence/model/packet-id.json --chain
-
-# List all evidence packets
-mrm evidence list --model ccr_monte_carlo
-```
-
-**Hash chain semantics:** Each packet stores a hash of the previous packet, creating an immutable audit trail. Tampering with any packet breaks the chain.
-
-### Databricks Unity Catalog & MLflow
-
-Publish validated models directly to enterprise model catalogs:
-
-- **`mrm publish`** - One-command publish to Databricks Unity Catalog with MLflow registration
-- **`mrm catalog resolve`** - Fetch model metadata by Unity Catalog URI
-- **`mrm catalog add`** - Register a model artifact into the catalog
-- **`mrm catalog refresh`** - Clear and refresh catalog cache
-- **Auto signature inference** - Infers MLflow model signature from validation data, feature names, or model coefficients
-- **Three-level namespace** - `catalog.schema.model_name` (e.g. `workspace.default.ccr_monte_carlo`)
-- **Environment variable config** - `{{ env_var('DATABRICKS_HOST') }}` substitution in YAML
-- **Versioned registration** - Creates registered model versions in Unity Catalog
-
-### CCR Monte Carlo Example
-
-Full worked example of Counterparty Credit Risk validation (`ccr_example/`):
-
-- **Monte Carlo engine** - Vasicek rate dynamics, IRS mark-to-market, netting, collateral
-- **Risk metrics** - EPE, PFE, CVA, EAD computation across simulated paths
-- **8 validation tests** - Convergence, reasonableness, backtesting, sensitivity, wrong-way risk, exposure shape, collateral effectiveness, governance
-- **Compliance report** - CPS 230 regulatory report with paragraph-level evidence mapping
-- **Trigger evaluation** - Scheduled and breach-driven re-validation triggers
-- **Catalog publish** - Model registered to Databricks Unity Catalog with MLflow tracking
-
-### GenAI RAG Customer Service Example
-
-**NEW: Fully operational GenAI validation** (`genai_example/`) - validated end-to-end with real API calls:
-
-- **RAG Pipeline** - FAISS vector retrieval + LLM generation (Claude Sonnet 4.6)
-- **LiteLLM Integration** - Unified interface to 100+ LLM providers
-- **2 Operational Tests Validated:**
-  - `LatencyBound` **PASSED** - P95 latency: 4.5s (< 10s threshold)
-  - `CostBound` **PASSED** - Avg cost: $0.02/query (< $0.10 limit)
-- **3 Compliance Reports Generated:**
-  - CPS 230 (APRA Australia)
-  - EU AI Act Annex IV
-  - SR 11-7 (Federal Reserve)
-- **Evidence Vault** - Hash-chained immutable evidence packets
-- **Knowledge Base** - Financial products Q&A corpus
-- **Test Framework** - 14 GenAI tests (12 not yet fully implemented, see test definitions in `mrm/tests/builtin/genai.py`)
-
-**Current Status:**
-```
-LLM endpoint loading working
-RAG retrieval working (3 docs retrieved per query)
-Cost tracking working ($0.02/query average)
-Latency tracking working (P95: 4.5s)
-Evidence packet creation working
-Compliance report generation working
-⏳ 12 additional tests defined but not fully implemented (hallucination, bias, PII, etc.)
-```
+`mrm-core` is built for the world after those dates: declarative
+config, version-controlled validation, immutable evidence, and 1:1
+replay of every decision a model makes.
 
 ---
 
-## Feature Execution Examples
+## The 30-second mental model
 
-### End-to-End Validation Run
+```mermaid
+flowchart LR
+    Y[mrm_project.yml] --> D[DAG]
+    D --> R[TestRunner]
+    R -- predict / generate --> Rec[(DecisionRecord<br/>hash-chained)]
+    R -- test results --> Ev[(EvidencePacket<br/>hash-chained, WORM)]
+    Rec -- OTLP/HTTP-JSON --> SIEM[(Bank SIEM /<br/>OTel collector)]
+    Ev --> Rep[Compliance report<br/>CPS 230 / SR 11-7 / SR 26-2 /<br/>EU AI Act / OSFI E-23]
+    Rep --> GRC["OpenPages / ServiceNow /<br/>Workiva (roadmap)"]
 
-```
-$ cd ccr_example && python run_validation.py
-
-========================================================================
-  CCR MONTE CARLO MODEL -- COMPLIANCE VALIDATION
-========================================================================
-
-[1/5] Loading model and datasets...
-  Model:      CCRMonteCarloModel
-  Simulations: 5000
-  Time steps:  60
-  Dataset:     50 counterparties
-
-[2/5] Running CCR validation tests...
-
-  [PASS] ccr.MCConvergence (score: 0.9720)
-  [FAIL] ccr.EPEReasonableness (score: 0.7800)
-         Reason: 22% of EPE/notional ratios outside [0.001, 0.1]
-  [FAIL] ccr.PFEBacktest (score: 0.8600)
-         Reason: PFE breach rate 14.00% exceeds 10% threshold
-  [PASS] ccr.CVASensitivity (score: 0.8926)
-  [PASS] ccr.WrongWayRisk (score: 0.7752)
-  [FAIL] ccr.ExposureProfileShape (score: 0.6000)
-         Reason: Exposure profile shape anomaly detected
-  [PASS] ccr.CollateralEffectiveness (score: 0.2836)
-  [PASS] compliance.GovernanceCheck (score: 1.0000)
-
-  Summary: 5/8 passed, 3 failed
-
-[3/5] Evaluating validation triggers...
-
-  [FIRED] scheduled: Scheduled re-validation: 90 days since last run
-          Compliance: CPS 230 Para 34: Periodic review frequency
-  [FIRED] breach: PFE breach rate 14.00% exceeds 10%
-          Compliance: CPS 230 Para 36: Breach-driven re-validation
-
-[4/5] Generating compliance regulatory report...
-
-  Report written to: reports/ccr_monte_carlo_cps230_report.md
-  Report size: 13,059 characters
-
-[5/5] Saving test evidence...
-
-  Evidence saved to: reports/validation_evidence.json
-
-========================================================================
-  VALIDATION FAILED -- 5/8 tests passed
-========================================================================
+    classDef store fill:#fef3c7,stroke:#d97706,color:#92400e
+    classDef ext fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    class Rec,Ev store
+    class SIEM,GRC ext
 ```
 
-### NEW: GenAI RAG Validation Run (Real API Calls)
+You write a YAML project, declare your models and their tests, point
+the runner at a backend, and you get back:
 
-```
-$ cd genai_example && export ANTHROPIC_API_KEY="sk-ant-..." && python run_validation.py
-
-============================================================
-GenAI RAG Customer Service - Validation
-============================================================
-
-Loading project from: /Users/dbose/projects/mrm/mrm-core/genai_example
-Model: rag_assistant v1.0.0
-
-Warning: OPENAI_API_KEY not set
-   Set with: export OPENAI_API_KEY='your-key'
-   Continuing anyway (some tests may fail)...
-
-Running GenAI Test Suite
-This may take several minutes depending on API latency...
-
-Warning: You are sending unauthenticated requests to the HF Hub
-Loading weights: 100%|██████████| 103/103 [00:00<00:00, 5373.30it/s]
-
-============================================================
-Test Results Summary
-============================================================
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Test                               ┃ Status   ┃ Details                                 ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ genai.LatencyBound                 │ ✓ PASS   │ p_latency: 4485.23ms, percentile: 95   │
-│ genai.CostBound                    │ ✓ PASS   │ avg_cost: $0.0199, max_cost: $0.10     │
-└────────────────────────────────────┴──────────┴─────────────────────────────────────────┘
-
-Total Tests: 2
-Passed: 2
-Failed: 0
-Pass Rate: 100.0%
-
-Checking Validation Triggers
-Note: Trigger checking not yet implemented
-✓ No triggers activated
-
-Generating Compliance Reports
-✓ Generated cps230 report: rag_assistant_cps230_report.md
-✓ Generated euaiact report: rag_assistant_euaiact_report.md
-✓ Generated sr117 report: rag_assistant_sr117_report.md
-
-Freezing Evidence
-Using LocalFilesystemBackend - NOT FOR REGULATORY USE
-This backend provides NO immutability guarantees.
-Use S3 Object Lock backend for production environments.
-✓ Evidence frozen: 
-file:///Users/dbose/projects/mrm/mrm-core/genai_example/evidence/rag_assistant/packets.jsonl#fd50adb3-8f7e-477e-934a-e2d954e705d5
-
-============================================================
-✓ Validation Complete
-============================================================
-```
-
-**What Just Happened:**
-- Loaded RAG pipeline (FAISS retriever + Claude Sonnet 4.6)
-- Ran 20 latency test queries - P95: 4.5s (passed < 10s threshold)
-- Ran 10 cost test queries - Avg: $0.02/query (passed < $0.10 limit)
-- Generated 3 compliance reports (CPS 230, EU AI Act, SR 11-7)
-- Created immutable evidence packet with hash chain
-
-### Compliance Report Generation via CLI
-
-```
-$ mrm docs generate ccr_monte_carlo --compliance standard:cps230
-
-Generating compliance report (cps230) for: ccr_monte_carlo
-
-Running tests for model: ccr_monte_carlo
-  Running test: ccr.MCConvergence
-     PASSED (score: 0.972)
-  Running test: ccr.EPEReasonableness
-     FAILED (score: 0.780)
-  Running test: ccr.PFEBacktest
-     FAILED (score: 0.860)
-  Running test: ccr.CVASensitivity
-     PASSED (score: 0.893)
-  Running test: ccr.WrongWayRisk
-     PASSED (score: 0.775)
-  Running test: ccr.ExposureProfileShape
-     FAILED (score: 0.600)
-  Running test: ccr.CollateralEffectiveness
-     PASSED (score: 0.284)
-  Running test: compliance.GovernanceCheck
-     PASSED (score: 1.000)
-
-Report generated: reports/ccr_monte_carlo_cps230_report.md
-Report size: 13059 characters
-                     Test Results
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
-┃ Model           ┃ Status  ┃ Tests ┃ Passed ┃ Failed ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
-│ ccr_monte_carlo │  FAILED │     8 │      5 │      3 │
-└─────────────────┴─────────┴───────┴────────┴────────┘
-
-2 trigger(s) fired
-  -  Scheduled re-validation: 90 days since last run
-  -  PFE breach rate 14.00% exceeds 10%
-```
-
-### List Available Compliance Standards
-
-```
-$ mrm docs list-standards
-
-                         Available Compliance Standards                         
-┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┓
-┃ Name    ┃ Display Name                              ┃ Jurisdiction ┃ Version ┃
-┡━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ cps230  │ APRA CPS 230 -- Operational Risk          │ AU           │ 2024    │
-│         │ Management                                │              │         │
-│ euaiact │ EU AI Act Annex IV -- Technical           │ EU           │ 2024    │
-│         │ Documentation for High-Risk AI Systems    │              │         │
-│ osfie23 │ OSFI E-23 -- Guideline on Enterprise-Wide │ CA           │ 2023    │
-│         │ Model Risk Management                     │              │         │
-│ sr117   │ Federal Reserve SR 11-7 -- Supervisory    │ US           │ 2011    │
-│         │ Guidance on Model Risk Management         │              │         │
-└─────────┴───────────────────────────────────────────┴──────────────┴─────────┘
-```
-
-### Cross-Standard Compliance Crosswalk
-
-Map requirements across regulatory frameworks (AU, US, EU, CA):
-
-```
-$ mrm docs crosswalk --from cps230 --to sr117
-
-                           Crosswalk: CPS230 → SR117                            
-┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Concept             ┃ CPS230    ┃ SR117      ┃ Notes                         ┃
-┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Independent         │ Para      │ Section    │ All four standards require    │
-│ Validation          │ 12-14     │ II.A       │ independent validation...     │
-│ Ongoing Monitoring  │ Para      │ Section    │ All four standards require    │
-│                     │ 34-37     │ II.C       │ ongoing monitoring...         │
-│ ...                 │ ...       │ ...        │ ...                           │
-└─────────────────────┴───────────┴────────────┴───────────────────────────────┘
-
-Total concepts: 20
-```
-
-View all standard pairs:
-
-```
-$ mrm docs crosswalk --all
-
-               Cross-Standard Compliance Crosswalk (All Mappings)               
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Concept                   ┃ CPS 230    ┃ SR 11-7    ┃ EU AI Act ┃ OSFI E-23  ┃
-┃                           ┃ (AU)       ┃ (US)       ┃ (EU)      ┃ (CA)       ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ Model Identification...   │ Para 8-10  │ Section IV │ Annex IV.1│ Section 2.1│
-│ Independent Validation    │ Para 12-14 │ Section II │ Annex IV.8│ Section 5.1│
-│ Ongoing Monitoring        │ Para 34-37 │ Section II │ Annex IV.3│ Section 6.1│
-│ ...                       │ ...        │ ...        │ ...       │ ...        │
-└───────────────────────────┴────────────┴────────────┴───────────┴────────────┘
-
-Total concepts: 24
-```
-
-Generate markdown documentation:
-
-```
-$ mrm docs crosswalk --all --format markdown > crosswalk.md
-```
-
-See [mrm-core/docs/CROSSWALK.md](mrm-core/docs/CROSSWALK.md) for the complete mapping.
-
-### Publish to Databricks Unity Catalog
-
-```
-$ mrm publish ccr_monte_carlo
-
-Publishing model: ccr_monte_carlo
-Target catalog: databricks
-Registering model artifact: models/ccr_monte_carlo.pkl
-Loaded validation data for signature: data/validation.csv
-MLflow tracking configured for Databricks Unity Catalog
-Using MLflow experiment: /Shared/mrm-experiments
-Signature inferred from validation data
-Successfully registered model 'workspace.default.ccr_monte_carlo'.
-Created version '1' of model 'workspace.default.ccr_monte_carlo'.
-
-Model published successfully!
-
-Registered as: ccr_monte_carlo
-MLflow Model URI: dbfs:/databricks/mlflow-tracking/.../artifacts/model
-Registry Version: 1
-
-Next steps:
-  1. View in Databricks MLflow: Models > Registered Models
-  2. Reference in other projects using catalog URIs
-  3. Run: mrm catalog resolve databricks_uc://ccr_monte_carlo
-```
+1. **Evidence packets** — hash-chained, WORM-stored, regulator-shaped.
+2. **Decision records** — every inference, replayable byte-for-byte.
+3. **Compliance reports** — paragraph-mapped to four jurisdictions.
 
 ---
 
-## CLI Commands
+## Feature coverage
+
+### Compliance jurisdictions (bundled, pluggable)
+
+| Standard | Jurisdiction | Status | Source |
+|---|---|---|---|
+| **APRA CPS 230** | 🇦🇺 Australia | ✅ Bundled | [`builtin/cps230.py`](mrm-core/mrm/compliance/builtin/cps230.py) |
+| **Federal Reserve SR 11-7** | 🇺🇸 US | ✅ Bundled | [`builtin/sr117.py`](mrm-core/mrm/compliance/builtin/sr117.py) |
+| **EU AI Act Annex IV** | 🇪🇺 EU | ✅ Bundled | [`builtin/eu_ai_act.py`](mrm-core/mrm/compliance/builtin/eu_ai_act.py) |
+| **OSFI E-23** | 🇨🇦 Canada | ✅ Bundled | [`builtin/osfi_e23.py`](mrm-core/mrm/compliance/builtin/osfi_e23.py) |
+| **Cross-standard crosswalk** | 24 concepts × 4 jurisdictions | ✅ Shipped | [`CROSSWALK.md`](mrm-core/docs/CROSSWALK.md) |
+| **Fed SR 26-2** | 🇺🇸 US (supersedes SR 11-7) | 🟡 Roadmap [P8](STRATEGY.md) | — |
+| **NIST AI RMF, ECB Internal Models** | crosswalk targets | 🟡 Roadmap | — |
+
+Plugins are discovered three ways — bundled, pip-installed via the
+`mrm.compliance` entry-point group, or local paths declared in
+`mrm_project.yml`. See [ADR-0001](mrm-core/docs/adr/0001-pluggable-compliance-standards.md).
+
+### Validation tests (built-in, namespaced, pluggable)
+
+| Namespace | Domain | Notes |
+|---|---|---|
+| `tabular.*` | Missing values, drift, leakage, calibration, discrimination, stability | Pandas-shaped data |
+| `ccr.*` | Monte Carlo convergence, EPE/PFE bounds, antithetic variates, copula fit | Counterparty credit risk |
+| `model.*` | Performance, bias, fairness, explainability | Cross-cutting |
+| `genai.*` | Hallucination, bias, robustness, toxicity, drift, PII, latency, cost | 14 tests across 7 categories |
+| `compliance.*` | Governance checks per standard | One pack per jurisdiction |
+
+Test packs are pluggable via `@register_test`. The roadmap adds a
+50+-template adversarial pack and financial-F1 entity-weighted accuracy
+([P10](STRATEGY.md)).
+
+### Model sources
+
+| Source | Adapter | Replay-aware |
+|---|---|---|
+| Local pickle / joblib | `_load_pickle` | ✅ via `instrument_predictor` |
+| Python class | `_load_python_class` | ✅ |
+| MLflow registry | `_load_mlflow_model` | ✅ |
+| HuggingFace Hub | `_load_huggingface_model` | ✅ |
+| S3 / GCS / Azure URIs | `_load_s3_model` | ✅ |
+| Databricks Unity Catalog | UC backend | ✅ |
+| **LLM endpoints** | LiteLLM + legacy adapters | ✅ prompt + retrieval + decoding params auto-captured |
+
+### Replay primitive
+
+Every model invocation captures the four components required for
+reconstruction:
+
+```mermaid
+flowchart TB
+    subgraph DR[DecisionRecord]
+        I[1 input_state<br/>features / prompt / RAG context]
+        M[2 model_identity<br/>URI, version, artifact_hash,<br/>config_hash, framework, provider]
+        P[3 inference_params<br/>seed, temperature, top_p,<br/>top_k, max_tokens, retrieval_k]
+        O[4 output<br/>raw, pre post-processing]
+    end
+    DR --> H[content_hash = sha256 of canonical JSON]
+    H --> C[prior_record_hash chain<br/>per-model, append-only]
+    C --> B{Backend}
+    B --> L[Local JSONL<br/>dev only]
+    B --> S3[S3 + Object Lock<br/>COMPLIANCE mode]
+    DR --> OTLP[OTLP/HTTP-JSON exporter<br/>any OTel collector]
+```
+
+| Capability | OSS | Cloud *(roadmap)* |
+|---|---|---|
+| Hash-chained `DecisionRecord` | ✅ | ✅ |
+| `@capture` decorator + `CaptureContext` | ✅ | ✅ |
+| Auto-capture inside `TestRunner` for **every** model archetype | ✅ | ✅ |
+| Local JSONL backend | ✅ | — |
+| S3 + Object Lock backend | ✅ | ✅ managed |
+| OTLP/HTTP-JSON export | ✅ | ✅ |
+| `mrm replay record / reconstruct / verify / sample / verify-chain` | ✅ | ✅ |
+| HSM-backed signing (FIPS 140-2 L3+) | — | ✅ ([P9](STRATEGY.md)) |
+| Regulator-portal sample export | — | ✅ |
+| 7-year retention SLA | — | ✅ |
+
+Reference specs: [Decision Record v1](mrm-core/docs/spec/replay-record-v1.md).
+ADR: [Replay as first-class](mrm-core/docs/adr/0003-replay-as-first-class-primitive.md).
+
+### Evidence vault
+
+| Capability | OSS | Cloud *(roadmap)* |
+|---|---|---|
+| Hash-chained `EvidencePacket` | ✅ | ✅ |
+| Local + S3 Object Lock backends | ✅ | ✅ managed |
+| GPG / age signatures | ✅ | — |
+| Daily Merkle root publication | 🟡 [P9](STRATEGY.md) | ✅ |
+| HSM-backed root signing | — | ✅ |
+| Conformance test-vector suite | 🟡 [P9](STRATEGY.md) | — |
+
+Spec: [Evidence Vault v1](mrm-core/docs/spec/evidence-vault-v1.md).
+ADR: [Content-addressed hash chains](mrm-core/docs/adr/0002-evidence-vault-hash-chain.md).
+
+### dbt-style workflow primitives
+
+| Feature | Shape |
+|---|---|
+| **DAG** | `depends_on:` in YAML, topological sort, parallel execution |
+| **`ref()`** | Reference other models by name |
+| **Graph operators** | `+model`, `model+`, `+model+` |
+| **`--select`** | `mrm test --select tier:tier_1 --select tag:credit` |
+| **`mrm docs generate`** | Compile compliance reports, like `dbt docs generate` |
+| **Validation triggers** | scheduled, drift, breach, materiality, regulatory, manual |
+
+---
+
+## What it looks like
+
+A model declared in YAML:
+
+```yaml
+models:
+  - name: ccr_monte_carlo
+    version: 1.4.0
+    tier: tier_1
+    location:
+      type: file
+      path: artifacts/ccr_v140.pkl
+    depends_on:
+      - market_data_curve
+    tests:
+      - test: ccr.MCConvergence
+        params: { paths: 100000, tolerance: 1e-3 }
+      - test: ccr.EPEBounds
+        compliance:
+          cps230: ["27", "28"]
+          sr117:  ["III.A", "V.B"]
+          eu_ai_act: ["Annex IV §2.b"]
+```
+
+One CLI invocation compiles the whole thing into evidence + reports +
+replay:
 
 ```bash
-# Initialize new project
-mrm init [project_name] --template=credit_risk
-
-# List resources
-mrm list models --tier=tier_1
-mrm list tests
-mrm list suites
-
-# Run validation tests
-mrm test --models ccr_monte_carlo
-mrm test --select tier:tier_1
-mrm test --select +pd_model  # With dependencies
-
-# Generate compliance documentation (dbt-style)
-mrm docs generate ccr_monte_carlo --compliance standard:cps230
-mrm docs generate --select ccr_monte_carlo --compliance standard:sr117
-mrm docs generate credit_scorecard --compliance standard:euaiact
-mrm docs generate ccr_monte_carlo -c standard:cps230 -o report.md
-mrm docs list-standards
-mrm docs crosswalk --from cps230 --to sr117
-mrm docs crosswalk --all
-mrm docs crosswalk --all --format markdown > crosswalk.md
-
-# Manage validation triggers
-mrm triggers check ccr_monte_carlo
-mrm triggers list --model ccr_monte_carlo
-mrm triggers resolve ccr_monte_carlo
-
-# Evidence vault - immutable audit trail
-mrm evidence freeze ccr_monte_carlo --backend local
-mrm evidence freeze ccr_monte_carlo --backend s3 --bucket my-evidence --retention 2555
-mrm evidence verify file:///path/to/packets.jsonl#packet-id
-mrm evidence verify s3://bucket/evidence/model/packet-id.json --chain
-mrm evidence list --model ccr_monte_carlo
-
-# Publish to Databricks Unity Catalog
-mrm publish ccr_monte_carlo
-mrm publish ccr_monte_carlo --to databricks --version 1.0.0
-
-# Catalog operations
-mrm catalog resolve databricks_uc://workspace.default/ccr_monte_carlo
-mrm catalog add --name ccr_monte_carlo --from-file models/ccr_monte_carlo.pkl
-mrm catalog refresh
-
-# Debug project
-mrm debug --show-config --show-tests --show-dag
-
-# Show version
-mrm version
+mrm test --select ccr_monte_carlo
+mrm docs generate ccr_monte_carlo --compliance standard:cps230,sr117,eu_ai_act
+mrm evidence freeze ccr_monte_carlo --backend s3 --bucket bank-evidence --retention 2555
+mrm replay sample --model ccr_monte_carlo --since 2026-01-01 --n 50
 ```
 
 ---
 
-## Quick Start
+## CLI surface at a glance
+
+```
+mrm init <project>                   # scaffold new project
+mrm list  models|tests|suites        # introspect
+mrm test  [--select ...] [--threads N]
+mrm docs  generate|list-standards|crosswalk
+mrm evidence  freeze|verify|list
+mrm replay  record|reconstruct|verify|sample|verify-chain
+mrm triggers  check|list|run
+mrm catalog  list|publish|sync          # Databricks UC + MLflow
+mrm debug  --show-config|--show-dag|--show-catalog
+```
+
+Full help: `mrm <command> --help`.
+
+---
+
+## Architectural plug points
+
+```mermaid
+flowchart TB
+    subgraph Core[mrm-core]
+        CLI[Typer CLI]
+        Proj[Project + YAML config]
+        DAG[DAG / catalog / triggers]
+        Eng[TestRunner]
+        Repl[replay/]
+        Ev[evidence/]
+    end
+
+    subgraph Plugins[Pluggable extensions]
+        ST["@register_standard<br/>compliance plugins"]
+        TS["@register_test<br/>test plugins"]
+        EB[EvidenceBackend ABC<br/>WORM substrates]
+        RB[ReplayBackend ABC<br/>chain stores]
+        MS[Model sources<br/>pickle / MLflow / HF / UC / LLM]
+    end
+
+    subgraph External[External enterprise systems]
+        MLOps["MLflow / UC / SageMaker /<br/>Vertex / DVC / W&amp;B"]
+        WORM[S3 Object Lock /<br/>Azure Immutable Blob /<br/>UC + audit log]
+        SIEM[OTel collector / Splunk /<br/>Datadog / Grafana]
+        GRCx["OpenPages / ServiceNow /<br/>Workiva (roadmap)"]
+    end
+
+    CLI --> Eng
+    Proj --> DAG --> Eng
+    Eng -.calls.-> MS
+    Eng -.emits.-> Repl
+    Eng -.emits.-> Ev
+    ST --> Eng
+    TS --> Eng
+    Repl --> RB --> WORM
+    Repl --> SIEM
+    Ev --> EB --> WORM
+    Ev --> GRCx
+    MS --> MLOps
+
+    classDef plug fill:#e0f2fe,stroke:#0369a1,color:#0c4a6e
+    classDef ext fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    class ST,TS,EB,RB,MS plug
+    class MLOps,WORM,SIEM,GRCx ext
+```
+
+Five plug points, all behind small, versioned contracts. The
+contracts are documented in [`docs/spec/`](mrm-core/docs/spec/).
+
+---
+
+## Quick start
 
 ```bash
-# Install
-cd mrm-core
+# install
+git clone https://github.com/dbose/mrm.git
+cd mrm/mrm-core
 pip install -e .
 
-# NEW: Run GenAI RAG example with real API calls
-cd genai_example
-export ANTHROPIC_API_KEY="sk-ant-..."  # Set your API key
-python run_validation.py        # Run LLM tests, generate compliance reports
-
-# Or with Poetry
-poetry install
-
-# Run CCR example end-to-end
+# run the canonical CCR Monte Carlo example end-to-end
 cd ccr_example
-python setup_ccr_example.py    # Generate synthetic data + pickle model
-python run_validation.py        # Run 8 tests, evaluate triggers, generate report
+python setup_ccr_example.py     # synthetic data + pickled model
+python run_validation.py        # 8 tests + triggers + report
 
-# Via the CLI
+# or via the CLI
 mrm docs generate ccr_monte_carlo --compliance standard:cps230
-mrm docs list-standards
-mrm triggers check ccr_monte_carlo
+mrm replay record   ccr_monte_carlo --inputs trade_book.csv
+mrm replay verify   <record-id> --tolerance 1e-6
+mrm replay sample   --model ccr_monte_carlo --n 10
+mrm evidence freeze ccr_monte_carlo --backend local
+```
 
-# Publish to Databricks (requires credentials)
-export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
-export DATABRICKS_TOKEN="dapi..."
-mrm publish ccr_monte_carlo
+A worked GenAI example is under [`genai_example/`](mrm-core/genai_example/)
+— a RAG customer-service assistant validated end-to-end against CPS
+230 and EU AI Act mappings.
+
+---
+
+## Worked examples
+
+| Example | Domain | Models | Standards exercised |
+|---|---|---|---|
+| [`ccr_example/`](mrm-core/ccr_example/) | Counterparty credit risk | Monte Carlo simulation | CPS 230, SR 11-7, EU AI Act |
+| [`credit_risk_example/`](mrm-core/credit_risk_example/) | PD / LGD scoring | scikit-learn classifier | CPS 230, SR 11-7 |
+| [`genai_example/`](mrm-core/genai_example/) | RAG customer service | LiteLLM + FAISS | CPS 230, EU AI Act |
+
+The CCR example is the de-facto integration test for the framework as
+a whole. If a change breaks `python run_validation.py`, the change is
+broken.
+
+XVA via ORE and IRB credit-risk examples are next ([P13](STRATEGY.md), [P14](STRATEGY.md)).
+
+---
+
+## How `mrm-core` integrates, doesn't replace
+
+```mermaid
+flowchart LR
+    subgraph MLOps[MLOps stack — read from]
+        MLflow
+        UC[Unity Catalog]
+        SM[SageMaker MR]
+        VA[Vertex AI]
+        DVC
+        WB["W&amp;B"]
+    end
+    subgraph mrm[mrm-core]
+        m[CLI + DAG + tests + replay + evidence]
+    end
+    subgraph WORM[Immutable storage — write to]
+        S3OL[S3 Object Lock]
+        AIB[Azure Immutable Blob]
+        UCG[UC + audit log]
+    end
+    subgraph GRC[GRC platforms — push to]
+        OP[OpenPages]
+        SN[ServiceNow IRM]
+        WV[Workiva]
+    end
+    MLOps --> mrm --> WORM
+    mrm --> GRC
+```
+
+`mrm-core` is the **glue between MLOps and GRC**, not a replacement
+for either.
+
+---
+
+## Spec and governance posture
+
+Production-grade open-source MRM is unusual; we treat the public
+contracts as formal specs from day one.
+
+- [`GOVERNANCE.md`](mrm-core/GOVERNANCE.md) — maintainer model, spec
+  lifecycle, intent to transition to a neutral foundation
+  (OpenSSF / CNCF / FINOS) once adoption thresholds are met.
+- [`docs/adr/`](mrm-core/docs/adr/) — Architecture Decision Records
+  for every load-bearing design choice (5 ADRs and counting).
+- [`docs/spec/`](mrm-core/docs/spec/) — PRD-2 specs for:
+  - [Decision Record v1](mrm-core/docs/spec/replay-record-v1.md)
+  - [Evidence Vault Chain v1](mrm-core/docs/spec/evidence-vault-v1.md)
+  - [Compliance Plugin Contract v1](mrm-core/docs/spec/compliance-plugin-v1.md)
+- [`STRATEGY.md`](STRATEGY.md) — public roadmap with each feature's
+  status, OSS / Cloud tier, and wedge thesis.
+
+---
+
+## Project layout
+
+```
+mrm-core/
+├── mrm/
+│   ├── cli/                       Typer CLI
+│   ├── core/                      Project loading, DAG, catalog, triggers
+│   │   └── catalog_backends/      Databricks UC + MLflow integration
+│   ├── compliance/                Pluggable regulatory standards
+│   │   └── builtin/               cps230 · sr117 · eu_ai_act · osfi_e23
+│   ├── tests/                     Pluggable test framework
+│   │   └── builtin/               tabular · ccr · model · genai
+│   ├── engine/runner.py           Test runner with replay wiring
+│   ├── evidence/                  Hash-chained evidence vault
+│   │   └── backends/              local · s3_object_lock
+│   ├── replay/                    1:1 Decision Replay (NEW)
+│   │   ├── record.py              DecisionRecord schema
+│   │   ├── capture.py             @capture decorator + context manager
+│   │   ├── instrument.py          Universal predictor + LLM capture
+│   │   ├── otlp.py                OTLP/HTTP-JSON exporter
+│   │   ├── verify.py              reconstruct + diff
+│   │   └── backends/              local · s3
+│   └── backends/                  Storage backends + LLM adapters
+├── docs/
+│   ├── adr/                       Architecture Decision Records
+│   ├── spec/                      Normative versioned specs (PRD-2)
+│   ├── guides/                    User-facing walkthroughs
+│   └── CROSSWALK.md               Cross-standard mapping
+├── ccr_example/                   Canonical CCR Monte Carlo example
+├── credit_risk_example/           Credit risk PD example
+└── genai_example/                 RAG customer-service example
 ```
 
 ---
 
-## Configuration
+## Status
 
-### Model YAML (`ccr_monte_carlo.yml`)
+**Done (shipped):**
 
-```yaml
-model:
-  name: ccr_monte_carlo
-  version: 1.0.0
-  risk_tier: tier_1
-  owner: market_risk_team
-  validation_frequency: quarterly
+- ✅ CLI with dbt-style ergonomics
+- ✅ DAG, `ref()`, graph operators, topological sort, parallel execution
+- ✅ Built-in tests across 4 namespaces (tabular · ccr · model · genai)
+- ✅ Four bundled jurisdictions (AU / US / EU / CA)
+- ✅ Cross-standard crosswalk (24 concepts × 4 jurisdictions)
+- ✅ Validation trigger engine (6 trigger types)
+- ✅ Databricks UC + MLflow + HuggingFace integration
+- ✅ Evidence vault — hash-chained packets, S3 Object Lock backend
+- ✅ GenAI test pack — 14 tests, LiteLLM unified interface, RAG validation
+- ✅ **1:1 Decision Replay — DecisionRecord, capture, OTLP, verify, backends, CLI**
+- ✅ Replay capture for **all** model types — sklearn, HF, MLflow, LiteLLM, legacy LLM adapters
+- ✅ ADRs + spec PRDs + GOVERNANCE.md posture
 
-  location:
-    type: file
-    path: models/ccr_monte_carlo.pkl
-
-tests:
-  - test_suite: ccr_validation
-  - test: ccr.MCConvergence
-    config:
-      max_relative_diff: 0.05
-
-triggers:
-  - type: scheduled
-    schedule_days: 90
-    compliance_reference: "CPS 230 Para 34: Periodic review frequency"
-  - type: breach
-    threshold: 0.10
-    compliance_reference: "CPS 230 Para 36: Breach-driven re-validation"
-
-compliance:
-  standards:
-    cps230:
-      mapping:
-        governance:
-          - paragraph: "Para 8-10"
-            requirement: "Risk identification and classification"
-            evidence: "Model classified as Tier 1"
-        risk_management:
-          - paragraph: "Para 15-18"
-            requirement: "Risk assessment methodology"
-            evidence: "EPE reasonableness test validates exposure bounds"
-```
-
-### Project YAML (`mrm_project.yml`)
-
-```yaml
-name: ccr_example
-version: 1.0.0
-
-governance:
-  risk_tiers:
-    tier_1:
-      validation_frequency: quarterly
-      compliance_reference: "CPS 230 Para 8-14"
-      required_tests:
-        - ccr.MCConvergence
-        - ccr.EPEReasonableness
-        - ccr.PFEBacktest
-        - ccr.CVASensitivity
-        - ccr.WrongWayRisk
-        - ccr.ExposureProfileShape
-        - ccr.CollateralEffectiveness
-        - compliance.GovernanceCheck
-
-compliance:
-  default_standard: cps230
-  standards:
-    cps230:
-      enabled: true
-
-compliance_paths:
-  - compliance/custom
-
-catalogs:
-  databricks:
-    type: databricks_unity
-    host: "{{ env_var('DATABRICKS_HOST') }}"
-    token: "{{ env_var('DATABRICKS_TOKEN') }}"
-    catalog: workspace
-    schema: default
-    mlflow_registry: true
-    cache_ttl_seconds: 300
-```
+**Next:** SR 26-2 plugin, cryptographic vault hardening (Merkle roots,
+HSM signing), 50+-template adversarial pack, GRC connectors.
+See [STRATEGY.md](STRATEGY.md).
 
 ---
-
-## Build Custom Tests
-
-```python
-from mrm.tests.base import MRMTest, TestResult
-from mrm.tests.library import register_test
-
-@register_test
-class MyTest(MRMTest):
-    name = "custom.MyTest"
-
-    def run(self, model, dataset, **config):
-        # Your test logic
-        return TestResult(passed=True, score=0.95)
-```
-
-## Build Custom Compliance Standards
-
-```python
-from mrm.compliance.base import ComplianceStandard
-from mrm.compliance.registry import register_standard
-
-@register_standard
-class SR117Standard(ComplianceStandard):
-    name = "sr117"
-    display_name = "Fed SR 11-7 -- Model Risk Management Guidance"
-    jurisdiction = "US"
-    version = "2011"
-
-    def get_paragraphs(self):
-        return { ... }
-
-    def get_test_mapping(self):
-        return { ... }
-
-    def get_governance_checks(self):
-        return { ... }
-
-    def generate_report(self, model_name, model_config, test_results,
-                        trigger_events=None, output_path=None):
-        # Build report string
-        return report_text
-```
-
----
-
-## Project Structure
-
-```
-mrm/
-├── mrm-core/
-│   ├── mrm/
-│   │   ├── cli/                        # CLI interface (Typer)
-│   │   │   └── main.py                 #   All commands: test, docs, triggers, publish, catalog
-│   │   ├── core/                       # Core functionality
-│   │   │   ├── project.py              #   Project loader + model selection
-│   │   │   ├── dag.py                  #   Dependency graph
-│   │   │   ├── catalog.py              #   ModelCatalog, ModelRef, ModelSource
-│   │   │   ├── triggers.py             #   Validation trigger engine
-│   │   │   └── catalog_backends/
-│   │   │       └── databricks_unity.py #   Databricks UC + MLflow backend
-│   │   ├── compliance/                 # Pluggable compliance framework
-│   │   │   ├── base.py                 #   ComplianceStandard ABC
-│   │   │   ├── registry.py             #   ComplianceRegistry + @register_standard
-│   │   │   ├── report_generator.py     #   Generic entry point
-│   │   │   └── builtin/
-│   │   │       └── cps230.py           #   APRA CPS 230 implementation
-│   │   ├── tests/                      # Test framework
-│   │   │   ├── base.py                 #   MRMTest, ComplianceTest, TestResult
-│   │   │   ├── library.py              #   TestRegistry + @register_test
-│   │   │   └── builtin/
-│   │   │       ├── tabular.py          #   Dataset validation tests
-│   │   │       └── ccr.py              #   CCR + governance tests (8 tests)
-│   │   ├── engine/                     # Test runner
-│   │   │   └── runner.py               #   TestRunner with model loading
-│   │   ├── backends/                   # Storage backends (local, MLflow)
-│   │   ├── reporting/                  # Legacy report module (deprecation shim)
-│   │   └── utils/                      # YAML loading, helpers
-│   ├── ccr_example/                    # CCR Monte Carlo worked example
-│   │   ├── models/ccr/
-│   │   │   ├── ccr_monte_carlo.py      #   Monte Carlo simulation engine
-│   │   │   └── ccr_monte_carlo.yml     #   Model config + compliance mapping
-│   │   ├── data/                       #   Synthetic counterparty data
-│   │   ├── reports/                    #   Generated reports + JSON evidence
-│   │   ├── setup_ccr_example.py        #   Bootstrap: generate data + pickle
-│   │   ├── run_validation.py           #   End-to-end validation runner
-│   │   └── mrm_project.yml             #   Project config + catalog config
-│   ├── credit_risk_example/            # Credit risk example
-│   ├── examples/                       # Additional examples
-│   └── docs/                           # Documentation
-```
-
----
-
-## Requirements
-
-- **GenAI dependencies (validated):**
-  - litellm (1.83.14+) - Unified LLM interface
-  - anthropic - Anthropic API client
-  - sentence-transformers - Embedding models for RAG
-  - faiss-cpu - Vector similarity search
-- Python 3.9+
-- Dependencies (auto-installed):
-  - typer (>=0.12)
-  - pydantic
-  - pyyaml
-  - rich
-  - pandas, numpy, scikit-learn, scipy
-
-Optional:
-- mlflow (for MLflow backend + Databricks Unity Catalog)
-- databricks-sdk (for Databricks table listing)
-- transformers (for HuggingFace)
-- great-expectations (for GE integration)
-
-## Documentation
-
-Repo-root documents:
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) — system overview
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to send changes
-- [GOVERNANCE.md](GOVERNANCE.md) — who decides, how specs evolve
-- [MAINTAINERS.md](MAINTAINERS.md) — current maintainers
-
-Under [`docs/`](docs/):
-
-- [Quick Start](docs/guides/QUICKSTART.md)
-- [Getting Started](docs/guides/GETTING_STARTED.md)
-- [MRM Lifecycle](docs/guides/MRM_LIFECYCLE.md)
-- [Model References](docs/guides/MODEL_REFERENCES.md)
-- [Reference Types](docs/guides/REFERENCE_TYPES.md)
-- [DAG Features](docs/guides/DAG_FEATURES.md)
-- [Complete Features](docs/guides/COMPLETE_FEATURES.md)
-- [Cross-standard Crosswalk](docs/CROSSWALK.md)
-- [Architecture Decision Records](docs/adr/README.md)
-- [Normative specifications](docs/spec/README.md)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and
-[GOVERNANCE.md](GOVERNANCE.md) for how decisions are made.
+PRs welcome. Read [CONTRIBUTING.md](mrm-core/CONTRIBUTING.md) and
+[GOVERNANCE.md](mrm-core/GOVERNANCE.md) first. Non-trivial
+architectural changes need an [ADR](mrm-core/docs/adr/template.md).
 
 ## License
 
-Apache 2.0 - See [LICENSE](LICENSE)
-
-## Version
-
-**MRM Core v0.2.0**
-
-Built: May 2026
-
-**Latest Updates:**
-- GenAI/LLM validation framework fully operational
-- LiteLLM integration tested with Claude Sonnet 4.6
-- RAG pipeline validation (FAISS + sentence-transformers)
-- 2 operational tests validated: LatencyBound, CostBound
-- Multi-standard compliance reports (CPS 230, EU AI Act, SR 11-7)
-- Evidence vault with hash-chained packets
+Apache 2.0 — see [LICENSE](mrm-core/LICENSE).
