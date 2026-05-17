@@ -14,6 +14,16 @@
 
 ---
 
+## See it run
+
+<a href="https://asciinema.org/a/yIwHqJ1GZG2vJEwa" target="_blank">
+  <img src="https://asciinema.org/a/yIwHqJ1GZG2vJEwa.svg" width="700" alt="riskattest 90-second walkthrough" />
+</a>
+
+*90 seconds — `mrm doctor` → `mrm replay reconstruct` → `mrm replay sample` → `mrm evidence root verify` → generated SR 26-2 report.*
+
+---
+
 ## Why this exists
 
 Regulators (Fed, APRA, OSFI, EU AI Office) now expect financial

@@ -1,0 +1,13 @@
+{
+  "epoch": "2026-05-17",
+  "leaf_count": 4,
+  "metadata": {},
+  "published_at": "2026-05-17T06:48:47.127946Z",
+  "root_hash": "6488168e6cf62efcbdc36102a70c3ce719f1bba46c7ccbeb03c8ca2cdd0bc00a",
+  "sessions": [
+    "demo-session"
+  ],
+  "signature": "dd518118d785b9cae8d7239f82c033f287add2e8d75b00a4158ab012eb30314d",
+  "signer": "local",
+  "spec_version": "evidence-vault-v1"
+}
