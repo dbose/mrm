@@ -1,0 +1,575 @@
+# Cross-Standard Compliance Crosswalk
+#
+# Maps conceptually similar requirements across four major model risk
+# management regulatory frameworks:
+# - APRA CPS 230 (Australia)
+# - Federal Reserve SR 11-7 (United States)
+# - EU AI Act Annex IV (European Union)
+# - OSFI E-23 (Canada)
+#
+# Structure: Each concept has mappings to specific sections in each standard.
+# "notes" field provides rationale for the mapping.
+#
+# Usage:
+#   mrm docs crosswalk --from cps230 --to sr117
+#
+# Author: Manual analysis by domain expert
+# Last Updated: 2026-05-10
+
+crosswalk:
+  # =====================================================================
+  # Theme 1: Model Identification and Inventory
+  # =====================================================================
+  - concept: "Model Identification and Inventory"
+    description: "Process for identifying all models subject to risk management and maintaining comprehensive inventory"
+    mappings:
+      cps230:
+        - "Para 8-10"
+      sr117:
+        - "Section IV"
+      euaiact:
+        - "Annex IV.1"
+      osfie23:
+        - "Section 2.1"
+        - "Section 7.2"
+    notes: "All four standards require comprehensive model identification. CPS 230 embeds this in risk classification. SR 11-7 and OSFI E-23 have explicit inventory requirements. EU AI Act requires general system description in Annex IV.1."
+
+  # =====================================================================
+  # Theme 2: Risk Classification and Tiering
+  # =====================================================================
+  - concept: "Risk Classification and Tiering"
+    description: "Methodology for assessing model risk level and assigning to risk tiers based on impact, complexity, and materiality"
+    mappings:
+      cps230:
+        - "Para 8-10"
+      sr117:
+        - "Section III.D"
+      euaiact:
+        - "Annex IV.1"
+      osfie23:
+        - "Section 2.2"
+    notes: "CPS 230 Para 8-10 explicitly requires risk classification. SR 11-7 Section III.D links validation frequency to risk significance. OSFI E-23 Section 2.2 provides detailed risk tiering criteria. EU AI Act classifies AI systems by risk level (high-risk provisions in Annex IV)."
+
+  # =====================================================================
+  # Theme 3: Governance Framework
+  # =====================================================================
+  - concept: "Model Risk Management Governance Framework"
+    description: "Comprehensive framework with policies, procedures, and controls for managing model risk across the organization"
+    mappings:
+      cps230:
+        - "Para 30-33"
+      sr117:
+        - "Section III.A"
+      euaiact:
+        - "Annex IV.4"
+      osfie23:
+        - "Section 3.1"
+    notes: "All standards require comprehensive governance frameworks. CPS 230 Para 30-33 focuses on operational risk controls. SR 11-7 Section III.A and OSFI E-23 Section 3.1 are directly comparable. EU AI Act Annex IV.4 requires risk management system documentation."
+
+  # =====================================================================
+  # Theme 4: Roles, Responsibilities, and Accountability
+  # =====================================================================
+  - concept: "Roles, Responsibilities, and Accountability"
+    description: "Clear assignment of ownership, development, validation, and approval responsibilities with defined accountability"
+    mappings:
+      cps230:
+        - "Para 11"
+      sr117:
+        - "Section III.B"
+      euaiact: []
+      osfie23:
+        - "Section 3.2"
+    notes: "CPS 230 Para 11 requires clear accountability. SR 11-7 Section III.B and OSFI E-23 Section 3.2 detail model ownership and validation independence. EU AI Act does not explicitly address organizational roles but implies provider responsibilities."
+
+  # =====================================================================
+  # Theme 5: Board and Senior Management Oversight
+  # =====================================================================
+  - concept: "Board and Senior Management Oversight"
+    description: "Requirements for board and senior management understanding, oversight, and effective challenge of model risk"
+    mappings:
+      cps230:
+        - "Para 11"
+      sr117:
+        - "Section III.C"
+      euaiact: []
+      osfie23:
+        - "Section 3.3"
+    notes: "SR 11-7 Section III.C and OSFI E-23 Section 3.3 explicitly require board/senior management oversight. CPS 230 Para 11 implies accountability at senior levels. EU AI Act focuses on provider-level responsibilities rather than internal governance."
+
+  # =====================================================================
+  # Theme 6: Three Lines of Defence
+  # =====================================================================
+  - concept: "Three Lines of Defence Model"
+    description: "Segregation between model owners (1st line), independent validation/risk (2nd line), and internal audit (3rd line)"
+    mappings:
+      cps230:
+        - "Para 11"
+        - "Para 30-33"
+      sr117:
+        - "Section III.B"
+      euaiact: []
+      osfie23:
+        - "Section 3.4"
+    notes: "OSFI E-23 Section 3.4 explicitly frames model risk management using three lines of defence. SR 11-7 Section III.B requires independence between development, validation, and use. CPS 230 implies this through accountability and control requirements."
+
+  # =====================================================================
+  # Theme 7: Model Development and Design
+  # =====================================================================
+  - concept: "Model Development and Design"
+    description: "Requirements for sound theoretical foundations, appropriate methodology, and justified design choices"
+    mappings:
+      cps230:
+        - "Para 28-29"
+      sr117:
+        - "Section I.A"
+      euaiact:
+        - "Annex IV.2"
+      osfie23:
+        - "Section 4.1"
+    notes: "All four standards require sound model design. CPS 230 Para 28-29 covers adequacy and fitness-for-purpose. SR 11-7 Section I.A and OSFI E-23 Section 4.1 detail development practices. EU AI Act Annex IV.2 requires detailed system element description."
+
+  # =====================================================================
+  # Theme 8: Model Purpose and Intended Use
+  # =====================================================================
+  - concept: "Model Purpose and Intended Use"
+    description: "Clear documentation of model purpose, business use case, intended application, and use limitations"
+    mappings:
+      cps230:
+        - "Para 28-29"
+      sr117:
+        - "Section I.B"
+      euaiact:
+        - "Annex IV.1"
+      osfie23:
+        - "Section 7.1"
+    notes: "All standards require clear purpose documentation. SR 11-7 Section I.B explicitly addresses model use and purpose. CPS 230 Para 28-29 requires fitness-for-purpose assessment. EU AI Act Annex IV.1 requires general description including intended purpose. OSFI E-23 Section 7.1 requires purpose in documentation standards."
+
+  # =====================================================================
+  # Theme 9: Data Quality, Assumptions, and Representativeness
+  # =====================================================================
+  - concept: "Data Quality, Assumptions, and Representativeness"
+    description: "Requirements for high-quality, representative data with documented assumptions and limitations"
+    mappings:
+      cps230:
+        - "Para 15-18"
+      sr117:
+        - "Section I.C"
+      euaiact:
+        - "Annex IV.2"
+        - "Annex IV.4"
+      osfie23:
+        - "Section 4.2"
+    notes: "Data quality is fundamental across all standards. CPS 230 Para 15-18 covers risk assessment methodology including data. SR 11-7 Section I.C and OSFI E-23 Section 4.2 detail data requirements. EU AI Act Annex IV.2 and IV.4 require data governance documentation."
+
+  # =====================================================================
+  # Theme 10: Model Implementation and Testing
+  # =====================================================================
+  - concept: "Model Implementation and Testing"
+    description: "Requirements for correct implementation, initial development testing, and verification of model logic"
+    mappings:
+      cps230:
+        - "Para 28-29"
+      sr117:
+        - "Section I.A"
+      euaiact:
+        - "Annex IV.2"
+      osfie23:
+        - "Section 4.3"
+    notes: "OSFI E-23 Section 4.3 explicitly addresses implementation and testing. SR 11-7 Section I.A includes implementation within development. CPS 230 Para 28-29 and EU AI Act Annex IV.2 cover system functioning."
+
+  # =====================================================================
+  # Theme 11: Model Outputs and Reporting
+  # =====================================================================
+  - concept: "Model Outputs and Reporting"
+    description: "Requirements for appropriate analysis of model outputs, reporting with context, and post-model adjustments"
+    mappings:
+      cps230:
+        - "Para 34-37"
+      sr117:
+        - "Section I.D"
+      euaiact:
+        - "Annex IV.3"
+      osfie23:
+        - "Section 6.2"
+    notes: "SR 11-7 Section I.D explicitly addresses model outputs and reporting. CPS 230 Para 34-37 and OSFI E-23 Section 6.2 cover monitoring and reporting. EU AI Act Annex IV.3 requires monitoring and control documentation."
+
+  # =====================================================================
+  # Theme 12: Independent Validation
+  # =====================================================================
+  - concept: "Independent Validation"
+    description: "Requirement for independent validation performed by qualified staff separate from model development and use"
+    mappings:
+      cps230:
+        - "Para 12-14"
+      sr117:
+        - "Section II.A"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.1"
+    notes: "All four standards require independent validation. CPS 230 Para 12-14, SR 11-7 Section II.A, and OSFI E-23 Section 5.1 align closely. EU AI Act Annex IV.8 requires detailed performance assessment which serves validation purpose."
+
+  # =====================================================================
+  # Theme 13: Validation Scope and Objectives
+  # =====================================================================
+  - concept: "Validation Scope and Objectives"
+    description: "Comprehensiveness of validation including conceptual soundness, monitoring, and outcomes analysis"
+    mappings:
+      cps230:
+        - "Para 12-14"
+      sr117:
+        - "Section II.A"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.2"
+    notes: "SR 11-7 Section II.A and OSFI E-23 Section 5.2 detail validation scope including three pillars (conceptual soundness, ongoing monitoring, outcomes analysis). CPS 230 Para 12-14 and EU AI Act Annex IV.8 cover similar ground."
+
+  # =====================================================================
+  # Theme 14: Evaluation of Conceptual Soundness
+  # =====================================================================
+  - concept: "Evaluation of Conceptual Soundness"
+    description: "Assessment of whether model theory, assumptions, and methodology are appropriate for intended use"
+    mappings:
+      cps230:
+        - "Para 28-29"
+      sr117:
+        - "Section II.B"
+      euaiact:
+        - "Annex IV.2"
+      osfie23:
+        - "Section 5.3"
+    notes: "SR 11-7 Section II.B and OSFI E-23 Section 5.3 explicitly address conceptual soundness review. CPS 230 Para 28-29 (adequacy/fitness) and EU AI Act Annex IV.2 (system description) serve similar purposes."
+
+  # =====================================================================
+  # Theme 15: Ongoing Monitoring
+  # =====================================================================
+  - concept: "Ongoing Monitoring"
+    description: "Continuous evaluation of model performance, stability, and appropriateness with tracking of inputs, logic, and outputs"
+    mappings:
+      cps230:
+        - "Para 34-37"
+      sr117:
+        - "Section II.C"
+      euaiact:
+        - "Annex IV.3"
+      osfie23:
+        - "Section 6.1"
+        - "Section 6.2"
+    notes: "All four standards require ongoing monitoring. CPS 230 Para 34-37, SR 11-7 Section II.C, EU AI Act Annex IV.3, and OSFI E-23 Sections 6.1-6.2 align well. OSFI E-23 provides most detailed monitoring framework."
+
+  # =====================================================================
+  # Theme 16: Outcomes Analysis and Backtesting
+  # =====================================================================
+  - concept: "Outcomes Analysis and Backtesting"
+    description: "Comparison of model predictions with actual outcomes to assess accuracy and identify systematic biases"
+    mappings:
+      cps230:
+        - "Para 34-37"
+      sr117:
+        - "Section II.D"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.4"
+    notes: "SR 11-7 Section II.D and OSFI E-23 Section 5.4 explicitly require backtesting where feasible. CPS 230 Para 34-37 and EU AI Act Annex IV.8 (performance assessment) cover outcomes analysis."
+
+  # =====================================================================
+  # Theme 17: Sensitivity Analysis and Stress Testing
+  # =====================================================================
+  - concept: "Sensitivity Analysis and Stress Testing"
+    description: "Comprehensive testing of model behavior under different assumptions, scenarios, and adverse conditions"
+    mappings:
+      cps230:
+        - "Para 24-27"
+      sr117:
+        - "Section II.E"
+      euaiact: []
+      osfie23:
+        - "Section 5.5"
+    notes: "CPS 230 Para 24-27, SR 11-7 Section II.E, and OSFI E-23 Section 5.5 align on scenario analysis and stress testing. EU AI Act does not explicitly address stress testing but Annex IV.4 (risk management) implies scenario analysis."
+
+  # =====================================================================
+  # Theme 18: Validation Frequency and Triggers
+  # =====================================================================
+  - concept: "Validation Frequency and Revalidation Triggers"
+    description: "How often models are validated and what events trigger revalidation (commensurate with risk tier)"
+    mappings:
+      cps230:
+        - "Para 12-14"
+      sr117:
+        - "Section III.D"
+      euaiact:
+        - "Annex IV.5"
+      osfie23:
+        - "Section 6.3"
+    notes: "All four standards address validation frequency. CPS 230 Para 12-14 and SR 11-7 Section III.D link frequency to risk tier. OSFI E-23 Section 6.3 defines revalidation triggers. EU AI Act Annex IV.5 requires documentation of lifecycle changes."
+
+  # =====================================================================
+  # Theme 19: Model Documentation Standards
+  # =====================================================================
+  - concept: "Model Documentation Standards"
+    description: "Requirements for comprehensive documentation sufficient for third-party understanding and evaluation"
+    mappings:
+      cps230:
+        - "Para 11"
+        - "Para 28-29"
+      sr117:
+        - "Section IV"
+      euaiact:
+        - "Annex IV.1"
+        - "Annex IV.2"
+        - "Annex IV.7"
+      osfie23:
+        - "Section 7.1"
+    notes: "All four standards require comprehensive documentation. SR 11-7 Section IV and OSFI E-23 Section 7.1 provide detailed documentation requirements. EU AI Act entire Annex IV IS the technical documentation requirement. CPS 230 implies documentation across multiple paragraphs."
+
+  # =====================================================================
+  # Theme 20: Version Control and Change Management
+  # =====================================================================
+  - concept: "Version Control and Change Management"
+    description: "Formal processes for tracking model changes, versions, and assessing impact of modifications"
+    mappings:
+      cps230: []
+      sr117:
+        - "Section IV"
+      euaiact:
+        - "Annex IV.5"
+      osfie23:
+        - "Section 7.3"
+    notes: "OSFI E-23 Section 7.3 explicitly requires version control and change management. SR 11-7 Section IV implies this through documentation requirements. EU AI Act Annex IV.5 requires documentation of lifecycle changes. CPS 230 does not explicitly address version control."
+
+  # =====================================================================
+  # Theme 21: Concentration and Interconnection Risk
+  # =====================================================================
+  - concept: "Concentration and Interconnection Risk"
+    description: "Assessment of risks from model concentration, interconnections, and dependencies within risk ecosystem"
+    mappings:
+      cps230:
+        - "Para 19-23"
+      sr117: []
+      euaiact: []
+      osfie23: []
+    notes: "CPS 230 Para 19-23 uniquely addresses concentration and interconnection risk as part of operational risk management. Other standards do not explicitly cover this dimension."
+
+  # =====================================================================
+  # Theme 22: Cybersecurity and IT Controls
+  # =====================================================================
+  - concept: "Cybersecurity and IT Risk Management"
+    description: "Requirements for cybersecurity measures, IT controls, and protection of model systems"
+    mappings:
+      cps230:
+        - "Para 30-33"
+        - "Para 38-42"
+      sr117: []
+      euaiact:
+        - "Annex IV.9"
+      osfie23: []
+    notes: "EU AI Act Annex IV.9 explicitly requires cybersecurity measures documentation. CPS 230 Para 30-33 and 38-42 cover operational controls including IT risk. SR 11-7 and OSFI E-23 do not explicitly address cybersecurity (predates modern cyber threats)."
+
+  # =====================================================================
+  # Theme 23: Harmonised Standards and Conformity
+  # =====================================================================
+  - concept: "Harmonised Standards and Conformity Assessment"
+    description: "Reference to harmonised technical standards and EU conformity declaration processes"
+    mappings:
+      cps230: []
+      sr117: []
+      euaiact:
+        - "Annex IV.6"
+        - "Annex IV.7"
+      osfie23: []
+    notes: "EU AI Act Annex IV.6 and IV.7 are unique to EU regulatory framework (harmonised standards, CE marking, conformity assessment). No equivalent in other three standards."
+
+  # =====================================================================
+  # Theme 24: Risk Mitigation and Controls
+  # =====================================================================
+  - concept: "Risk Mitigation and Control Measures"
+    description: "Requirements for implementing controls to mitigate identified model risks"
+    mappings:
+      cps230:
+        - "Para 38-42"
+      sr117:
+        - "Section III.A"
+      euaiact:
+        - "Annex IV.4"
+      osfie23:
+        - "Section 3.1"
+    notes: "CPS 230 Para 38-42 explicitly addresses risk mitigation and controls. Other standards embed this in governance/framework requirements. EU AI Act Annex IV.4 requires risk management system description."
+
+  # =====================================================================
+  # Theme 25: AI Activity Logging (Decision Records) -- NEW
+  # =====================================================================
+  - concept: "AI Activity Logging (Per-Decision Records)"
+    description: "Capture of a tamper-evident record for every AI/GenAI inference (input state, model identity, inference params, raw output)"
+    mappings:
+      cps230:
+        - "Para 41"
+      sr117: []
+      sr26_2:
+        - "Section II.AI.A"
+        - "Section II.AI.B"
+        - "Section IV.AI.C"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.2"
+    notes: "SR 26-2 introduces an explicit AI activity-logging mandate not present in SR 11-7. CPS 230 Para 41 covers operational risk event logging; EU AI Act Annex IV.8 requires logging capabilities for high-risk systems. mrm-core anchors this to the DecisionRecord primitive (docs/spec/replay-record-v1.md)."
+
+  # =====================================================================
+  # Theme 26: Tamper-Evident Evidence Chain -- NEW
+  # =====================================================================
+  - concept: "Tamper-Evident Evidence Chain-of-Custody"
+    description: "Cryptographic chain-of-custody (hash chain / Merkle aggregation) for validation evidence; integrity verifiable on demand"
+    mappings:
+      cps230:
+        - "Para 41"
+      sr117: []
+      sr26_2:
+        - "Section III.AI.A"
+        - "Section III.AI.B"
+      euaiact:
+        - "Annex IV.8"
+      osfie23:
+        - "Section 5.2"
+    notes: "SR 26-2 makes the 'tamper-evident, integrity-protected, immutable, complete' evidence expectation explicit. SR 11-7 implies it via Section IV inventory but does not specify cryptographic chain-of-custody. mrm-core anchors this to the hash-chained EvidencePacket (docs/spec/evidence-vault-v1.md)."
+
+  # =====================================================================
+  # Theme 27: Third-Party / Vendor AI Governance -- NEW
+  # =====================================================================
+  - concept: "Third-Party / Vendor AI Model Governance"
+    description: "Governance expectations for foundation models, managed LLM endpoints, and other vendor-provided AI components"
+    mappings:
+      cps230:
+        - "Para 43"
+      sr117:
+        - "Section III.E"
+      sr26_2:
+        - "Section V.A"
+        - "Section V.B"
+      euaiact:
+        - "Annex IV.1"
+        - "Annex IV.4"
+      osfie23:
+        - "Section 6.1"
+    notes: "SR 11-7 Section III.E addresses vendor models generically. SR 26-2 Section V is the dedicated AI-specific extension covering foundation models and managed LLM endpoints. CPS 230 Para 43 covers third-party service-provider risk; OSFI E-23 Section 6.1 addresses third-party model components."
+
+# =====================================================================
+# SR 11-7 -> SR 26-2 transition map
+# =====================================================================
+# This section is for institutions transitioning from SR 11-7 to SR 26-2.
+# It identifies (a) sections that carry over with renumbering, and (b)
+# AI-specific sections in SR 26-2 with no SR 11-7 antecedent.
+sr_11_7_to_sr_26_2_transition:
+  carried_over_sections:
+    - sr117: "Section I.A"
+      sr26_2: "Section I.A"
+      note: "Sound theory / design -- unchanged in substance, AI-specific wording added"
+    - sr117: "Section I.B"
+      sr26_2: "Section I.B"
+      note: "Use & intended purpose -- AI in-scope / out-of-scope use cases added"
+    - sr117: "Section I.C"
+      sr26_2: "Section I.C"
+      note: "Data quality -- retrieval-corpus lineage explicitly included"
+    - sr117: "Section II.A"
+      sr26_2: "Section II.A"
+      note: "Conceptual soundness -- unchanged"
+    - sr117: "Section II.B"
+      sr26_2: "Section II.B"
+      note: "Ongoing monitoring -- AI drift / consistency triggers added"
+    - sr117: "Section II.C"
+      sr26_2: "Section II.C"
+      note: "Outcomes analysis -- unchanged"
+    - sr117: "Section II.D"
+      sr26_2: "Section II.D"
+      note: "Sensitivity / stress -- unchanged"
+    - sr117: "Section III.A"
+      sr26_2: "Section III.A"
+      note: "Policies & controls -- AI-specific provisions required"
+    - sr117: "Section III.B"
+      sr26_2: "Section III.B"
+      note: "Roles & independence -- unchanged"
+    - sr117: "Section III.D"
+      sr26_2: "Section III.C"
+      note: "Risk-tier-commensurate cadence -- renumbered (D -> C)"
+    - sr117: "Section III.E"
+      sr26_2: "Section V.A"
+      note: "Vendor governance -- promoted to dedicated Section V for AI"
+    - sr117: "Section IV"
+      sr26_2: "Section IV.A"
+      note: "Inventory -- preserved; AI inventory adds IV.AI.C linkage"
+  new_in_sr_26_2:
+    - section: "Section II.AI.A"
+      title: "AI Activity Logging"
+      mrm_core_anchor: "DecisionRecord (replay/record.py)"
+    - section: "Section II.AI.B"
+      title: "Decision Reconstruction (Replay)"
+      mrm_core_anchor: "mrm replay verify / reconstruct"
+    - section: "Section II.AI.C"
+      title: "AI-Specific Risk Testing"
+      mrm_core_anchor: "genai.* test pack"
+    - section: "Section II.AI.D"
+      title: "RAG Context Integrity"
+      mrm_core_anchor: "DecisionRecord.retrieved_context"
+    - section: "Section III.AI.A"
+      title: "Tamper-Evident Audit Trail"
+      mrm_core_anchor: "EvidencePacket hash chain (evidence/packet.py)"
+    - section: "Section III.AI.B"
+      title: "Chain-of-Custody for Evidence"
+      mrm_core_anchor: "EvidencePacket.prior_packet_hash linkage"
+    - section: "Section III.AI.C"
+      title: "AI Materiality Classification"
+      mrm_core_anchor: "model_config.ai_materiality"
+    - section: "Section IV.AI.C"
+      title: "Per-Decision Audit Trail Linkage"
+      mrm_core_anchor: "ReplayBackend per-model store"
+    - section: "Section V.A"
+      title: "Third-Party / Vendor AI Model Governance"
+      mrm_core_anchor: "model_config.third_party_assessment"
+    - section: "Section V.B"
+      title: "Vendor-Provided Evidence"
+      mrm_core_anchor: "EvidencePacket.metadata.vendor_attestation"
+
+# =====================================================================
+# Metadata
+# =====================================================================
+metadata:
+  version: "1.0.0"
+  created: "2026-05-10"
+  author: "MRM Framework Team"
+  standards_covered:
+    - name: "APRA CPS 230"
+      jurisdiction: "AU"
+      version: "2024"
+      full_name: "Prudential Standard CPS 230 Operational Risk Management"
+    - name: "SR 11-7"
+      jurisdiction: "US"
+      version: "2011"
+      full_name: "Federal Reserve SR 11-7 Supervisory Guidance on Model Risk Management"
+    - name: "SR 26-2"
+      jurisdiction: "US"
+      version: "2026"
+      full_name: "Federal Reserve SR 26-2 Supervisory Guidance on Model Risk Management for AI Systems"
+    - name: "EU AI Act Annex IV"
+      jurisdiction: "EU"
+      version: "2024"
+      full_name: "EU AI Act Annex IV Technical Documentation for High-Risk AI Systems"
+    - name: "OSFI E-23"
+      jurisdiction: "CA"
+      version: "2023"
+      full_name: "OSFI Guideline E-23 Enterprise-Wide Model Risk Management"
+  concepts_mapped: 27
+  notes: |
+    This crosswalk identifies conceptual equivalence across four major model
+    risk management regulatory frameworks. Mappings reflect substantive
+    alignment, not perfect semantic equivalence. Empty arrays indicate no
+    corresponding requirement in that standard.
+    
+    Use case: Financial institutions operating in multiple jurisdictions can
+    use this crosswalk to demonstrate compliance with multiple standards using
+    a unified validation approach.
+    
+    Limitations: Standards evolve; this crosswalk reflects standards as of
+    May 2026. Regulatory interpretations may differ across jurisdictions.
+    Consult with legal/compliance before relying on these mappings for
+    regulatory submissions.

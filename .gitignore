@@ -1,0 +1,38 @@
+# MRM
+.mrm/
+*.pkl
+*.joblib
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# Data
+*.csv
+*.parquet
+*.db
+CLAUDE.md
+.claude/
+
+# macOS
+.DS_Store
+
+# MLflow local tracking artefacts
+mlruns/
+
+# Archive / scratch
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bak
+
+# Private strategy / planning docs (kept locally, never tracked)
+STRATEGY.md
+*-strategy.md

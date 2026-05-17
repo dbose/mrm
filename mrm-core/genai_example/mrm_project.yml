@@ -1,0 +1,26 @@
+name: genai_customer_service
+version: 1.0.0
+
+model-paths:
+  - models
+
+test-paths:
+  - tests/custom
+
+data-paths:
+  - data
+
+docs-paths:
+  - docs
+
+profile: genai_dev
+
+# Optional: custom standards paths
+# compliance-paths:
+#   - custom_compliance
+
+vars:
+  project_description: "RAG-based customer service assistant for banking"
+  owner: "AI Risk Team"
+  business_unit: "Customer Experience"
+  risk_tier: "tier_1"  # High risk - customer-facing LLM

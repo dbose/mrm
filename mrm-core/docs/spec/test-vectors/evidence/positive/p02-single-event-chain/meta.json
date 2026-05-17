@@ -1,0 +1,6 @@
+{
+  "kind": "positive",
+  "summary": "single-event chain (smallest non-trivial case)",
+  "epoch": "2026-05-01",
+  "expected_root_hash": "0291a412258c960252ee18b585286deb6cc0dc24be1867c7efbe74b1abb3e837"
+}

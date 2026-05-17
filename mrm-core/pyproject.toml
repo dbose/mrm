@@ -1,0 +1,107 @@
+[tool.poetry]
+name = "mrm-core"
+version = "0.1.0"
+description = "Open source Model Risk Management CLI framework"
+authors = ["MRM Contributors"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [{include = "mrm"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+typer = ">=0.12.0"
+pydantic = "^2.0.0"
+pyyaml = "^6.0"
+rich = "^13.0.0"
+jinja2 = "^3.1.0"
+pandas = "^2.0.0"
+numpy = "^1.24.0"
+scikit-learn = "^1.3.0"
+scipy = "^1.11.0"
+
+# Runtime dependencies for Databricks + MLflow support
+mlflow = "^2.8.0"
+databricks-sdk = "^0.10.0"
+requests = "^2.31.0"
+great-expectations = {version = "^0.18.0", optional = true}
+wandb = {version = "^0.16.0", optional = true}
+
+# Optional GenAI/LLM dependencies
+openai = {version = "^1.0.0", optional = true}
+anthropic = {version = "^0.25.0", optional = true}
+boto3 = {version = "^1.28.0", optional = true}
+sentence-transformers = {version = "^2.2.0", optional = true}
+faiss-cpu = {version = "^1.7.4", optional = true}
+presidio-analyzer = {version = "^2.2.0", optional = true}
+presidio-anonymizer = {version = "^2.2.0", optional = true}
+frouros = {version = "^0.7.0", optional = true}
+transformers = {version = "^4.30.0", optional = true}
+torch = {version = "^2.0.0", optional = true}
+
+[tool.poetry.extras]
+ge = ["great-expectations"]
+wandb = ["wandb"]
+# Standalone drift extra -- pulls in frouros only.
+# Banks that can't add new transitive deps still get scipy/numpy
+# fallbacks via the always-installed core.
+drift = ["frouros"]
+genai = [
+    "litellm",  # Unified interface to 100+ LLM providers (recommended)
+    "openai",  # Legacy provider-specific adapters (backward compatibility)
+    "anthropic",
+    "boto3",
+    "sentence-transformers",
+    "faiss-cpu",
+    "presidio-analyzer",
+    "presidio-anonymizer",
+    "transformers",
+    "torch"
+]
+all = [
+    "great-expectations",
+    "litellm",
+    "wandb",
+    "openai",
+    "anthropic",
+    "boto3",
+    "sentence-transformers",
+    "faiss-cpu",
+    "presidio-analyzer",
+    "presidio-anonymizer",
+    "frouros",
+    "transformers",
+    "torch"
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+mypy = "^1.5.0"
+
+[tool.poetry.scripts]
+mrm = "mrm.cli.main:app"
+
+[tool.poetry.plugins."mrm.backends"]
+local = "mrm.backends.local:LocalBackend"
+mlflow = "mrm.backends.mlflow:MLflowBackend"
+
+[tool.poetry.plugins."mrm.compliance"]
+cps230 = "mrm.compliance.builtin.cps230:CPS230Standard"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true

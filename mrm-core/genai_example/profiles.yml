@@ -1,0 +1,6 @@
+genai_dev:
+  target: local
+  outputs:
+    local:
+      type: local
+      base_path: ./models

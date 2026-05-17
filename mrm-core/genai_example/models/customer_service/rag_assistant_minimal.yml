@@ -1,0 +1,39 @@
+model:
+  name: rag_assistant
+  version: 1.0.0
+  description: |
+    RAG-based customer service assistant - MINIMAL TEST CONFIG
+  
+  owner: ai_risk_team@example.com
+  business_unit: customer_experience
+  risk_tier: tier_1
+  
+  model_type: generative_ai
+  sub_type: rag_system
+  
+  location:
+    type: llm_endpoint
+    provider: litellm
+    model_name: claude-sonnet-4-6
+    temperature: 0.3
+    max_tokens: 500
+    top_p: 0.95
+    retriever:
+      type: faiss
+      embedding_model: sentence-transformers/all-MiniLM-L6-v2
+      top_k: 3
+      knowledge_base_path: data/knowledge_base.json
+
+# Just the operational tests that should work
+tests:
+- test: genai.LatencyBound
+  config:
+    percentile: 95
+    max_latency_ms: 5000
+
+- test: genai.CostBound
+  config:
+    max_cost_per_query: 0.10
+    pricing:
+      prompt_token_cost: 0.00003
+      completion_token_cost: 0.00006

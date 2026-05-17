@@ -1,0 +1,5 @@
+{
+  "kind": "negative",
+  "reason": "third event's prior_event_hash was replaced -- chain link must break",
+  "epoch": "2026-05-01"
+}
